@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/* Pathirana Hardware brand tokens — identical to the public website
+   (D:\Pathirana-Hardware-Web\src\app\globals.css). Logo red is used sparingly. */
+@theme {
+  --color-forest: #0f5d3a;
+  --color-forest-700: #0a4a2e;
+  --color-forest-800: #083d26;
+  --color-forest-900: #072e1d;
+  --color-forest-100: #e3ede7;
+  --color-forest-50: #f0f5f2;
+  --color-sage: #c9d8cf;
+
+  --color-brass: #b8860b;
+  --color-brass-ink: #7a5a0a;
+  --color-gold-soft: #e8be4f;
+  --color-brass-100: #f3e7c6;
+
+  --color-cream: #f8f6ed;
+  --color-cream-deep: #efebdd;
+  --color-paper: #ffffff;
+  --color-line: #ddd6c3;
+  --color-line-strong: #c8bfa6;
+
+  --color-charcoal: #1f1f1f;
+  --color-ink-muted: #4a4a44;
+
+  /* Logo red: errors and destructive actions only. */
+  --color-logo-red: #c8102e;
+  --color-danger-50: #fbecee;
+
+  --font-display: var(--font-playfair), "Georgia", "Times New Roman", serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px rgb(31 31 31 / 0.04), 0 18px 40px -26px rgb(15 93 58 / 0.35);
+  --shadow-lift: 0 2px 4px rgb(31 31 31 / 0.05), 0 30px 60px -30px rgb(15 93 58 / 0.55);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-charcoal);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brass);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-brass-100);
+  }
+}
+
+/* Native <dialog> backdrop in brand green. */
+dialog.ph-dialog::backdrop {
+  background: rgb(7 46 29 / 0.55);
+  backdrop-filter: blur(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

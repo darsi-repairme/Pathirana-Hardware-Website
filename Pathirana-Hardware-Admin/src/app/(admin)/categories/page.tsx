@@ -1,0 +1,335 @@
+"use client";
+
+import { useMemo, useState, type FormEvent } from "react";
+import { ImageOff, ImageUp, Pencil, Plus, Tags } from "lucide-react";
+import { api, ApiError, categoryImageUrl, uploadFile, type Category } from "@/lib/api";
+import { MediaUploadDialog } from "@/components/MediaUploadDialog";
+import { useApi } from "@/lib/useApi";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  ConfirmDialog,
+  Dialog,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  SearchBox,
+  Spinner,
+  TableWrap,
+  Textarea,
+  td,
+  th,
+} from "@/components/ui";
+
+type Form = { name: string; slug: string; description: string; sortOrder: string };
+const empty: Form = { name: "", slug: "", description: "", sortOrder: "0" };
+
+export default function CategoriesPage() {
+  const list = useApi<{ items: Category[] }>("admin/categories");
+  const items = list.data?.items ?? null;
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [editing, setEditing] = useState<Category | "new" | null>(null);
+  const [form, setForm] = useState<Form>(empty);
+  const [formError, setFormError] = useState<ApiError | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [toggle, setToggle] = useState<Category | null>(null);
+  const [toggling, setToggling] = useState(false);
+  const [media, setMedia] = useState<Category | null>(null);
+
+  const load = list.reload;
+
+  const shown = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return (items ?? []).filter((c) => !t || c.name.toLowerCase().includes(t) || c.slug.includes(t));
+  }, [items, q]);
+
+  const open = (c: Category | "new") => {
+    setEditing(c);
+    setFormError(null);
+    setForm(
+      c === "new"
+        ? empty
+        : { name: c.name, slug: c.slug, description: c.description ?? "", sortOrder: String(c.sortOrder) },
+    );
+  };
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setFormError(null);
+    const body = {
+      name: form.name.trim(),
+      ...(form.slug.trim() ? { slug: form.slug.trim() } : {}),
+      description: form.description.trim(),
+      sortOrder: Number(form.sortOrder) || 0,
+    };
+    try {
+      if (editing === "new") await api.post("admin/categories", body);
+      else if (editing) await api.patch(`admin/categories/${editing.id}`, body);
+      setNotice(editing === "new" ? `Category “${body.name}” added.` : `Category “${body.name}” saved.`);
+      setEditing(null);
+      load();
+    } catch (err) {
+      setFormError(err as ApiError);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmToggle = async () => {
+    if (!toggle) return;
+    setToggling(true);
+    try {
+      await api.patch(`admin/categories/${toggle.id}/status`, { isActive: !toggle.isActive });
+      setNotice(`Category “${toggle.name}” ${toggle.isActive ? "deactivated" : "activated"}.`);
+      setToggle(null);
+      load();
+    } catch (err) {
+      setError((err as Error).message);
+      setToggle(null);
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  return (
+    <>
+      <PageHeader
+        title="Categories"
+        description="Product categories shown on the website. Inactive categories and their products are hidden from the public."
+        actions={
+          <Button onClick={() => open("new")} icon={<Plus aria-hidden="true" className="size-4" />}>
+            Add Category
+          </Button>
+        }
+      />
+      {notice ? (
+        <div className="mb-4">
+          <Alert tone="success">{notice}</Alert>
+        </div>
+      ) : null}
+      {error || list.error ? (
+        <div className="mb-4">
+          <Alert onRetry={load}>{error ?? list.error}</Alert>
+        </div>
+      ) : null}
+
+      <Card>
+        <div className="border-b border-line/70 p-4">
+          <SearchBox value={q} onChange={setQ} label="Search categories" />
+        </div>
+        {!items && !list.error ? <Spinner /> : null}
+        {items && shown.length === 0 ? (
+          <EmptyState icon={<Tags />} title={items.length ? "No matching categories" : "No categories yet"}>
+            {items.length ? "Try a different search." : "Add the confirmed product categories to get started."}
+          </EmptyState>
+        ) : null}
+        {shown.length ? (
+          <TableWrap>
+            <table className="w-full min-w-[46rem]">
+              <thead className="bg-cream/60">
+                <tr>
+                  <th scope="col" className={th}>
+                    <span className="sr-only">Image</span>
+                  </th>
+                  <th scope="col" className={th}>
+                    Name
+                  </th>
+                  <th scope="col" className={th}>
+                    Order
+                  </th>
+                  <th scope="col" className={th}>
+                    Status
+                  </th>
+                  <th scope="col" className={`${th} text-right`}>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/60">
+                {shown.map((c) => (
+                  <tr key={c.id} className="hover:bg-cream/40">
+                    <td className={`${td} w-20`}>
+                      {c.imageKey ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- authenticated same-origin image via the admin gateway
+                        <img
+                          src={categoryImageUrl(c)}
+                          alt={c.imageAlt ?? ""}
+                          className="aspect-[4/3] w-16 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <span
+                          title="No uploaded image"
+                          className="inline-flex aspect-[4/3] w-16 items-center justify-center rounded-lg bg-cream text-ink-muted"
+                        >
+                          <ImageOff aria-hidden="true" className="size-4" />
+                          <span className="sr-only">No uploaded image</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className={td}>
+                      <p className="font-semibold text-charcoal">{c.name}</p>
+                      <p className="text-xs text-ink-muted">/{c.slug}</p>
+                    </td>
+                    <td className={`${td} tabular-nums`}>{c.sortOrder}</td>
+                    <td className={td}>{c.isActive ? <Badge tone="green">Active</Badge> : <Badge>Inactive</Badge>}</td>
+                    <td className={`${td} text-right`}>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => open(c)}
+                          icon={<Pencil aria-hidden="true" className="size-3.5" />}
+                        >
+                          Edit<span className="sr-only"> {c.name}</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setMedia(c)}
+                          icon={<ImageUp aria-hidden="true" className="size-3.5" />}
+                        >
+                          Image<span className="sr-only"> for {c.name}</span>
+                        </Button>
+                        <Button variant={c.isActive ? "danger" : "outline"} size="sm" onClick={() => setToggle(c)}>
+                          {c.isActive ? "Deactivate" : "Activate"}
+                          <span className="sr-only"> {c.name}</span>
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        ) : null}
+      </Card>
+
+      <Dialog
+        open={editing !== null}
+        title={editing === "new" ? "Add category" : "Edit category"}
+        onClose={() => setEditing(null)}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setEditing(null)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button type="submit" form="category-form" loading={saving}>
+              {editing === "new" ? "Add Category" : "Save Changes"}
+            </Button>
+          </>
+        }
+      >
+        <form id="category-form" onSubmit={save} className="space-y-4">
+          {formError ? (
+            <Alert>
+              {formError.message}
+              {formError.details.length ? (
+                <ul className="mt-1 list-disc pl-4">
+                  {formError.details.map((d) => (
+                    <li key={d}>{d}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </Alert>
+          ) : null}
+          <Field label="Name" required>
+            {(p) => (
+              <Input
+                {...p}
+                required
+                maxLength={120}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            )}
+          </Field>
+          <Field label="URL slug" hint="Optional. Created from the name when left empty (e.g. doors-windows).">
+            {(p) => (
+              <Input
+                {...p}
+                maxLength={80}
+                pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                value={form.slug}
+                onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase() })}
+              />
+            )}
+          </Field>
+          <Field label="Description">
+            {(p) => (
+              <Textarea
+                {...p}
+                maxLength={2000}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
+            )}
+          </Field>
+          <Field label="Display order" hint="Lower numbers are listed first.">
+            {(p) => (
+              <Input
+                {...p}
+                type="number"
+                min={-1000}
+                max={1000}
+                value={form.sortOrder}
+                onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
+              />
+            )}
+          </Field>
+        </form>
+      </Dialog>
+
+      <MediaUploadDialog
+        key={media?.id ?? "closed"}
+        open={media !== null}
+        title={`Image — ${media?.name ?? ""}`}
+        current={media?.imageKey ? { src: categoryImageUrl(media, "full"), alt: media.imageAlt ?? "" } : null}
+        currentNote="No uploaded image. The website shows the existing category artwork for the original categories, or a category icon."
+        hint="A clear, real photo of the category (landscape works best). JPEG, PNG or WebP up to 5 MB; it is resized and stored as WebP with all metadata removed."
+        alt={{
+          initial: media?.imageAlt ?? media?.name ?? "",
+          label: "Alt text",
+          hint: "Describe what the image shows.",
+        }}
+        onUpload={async (file, altText, onProgress) => {
+          await uploadFile(`admin/categories/${media!.id}/image`, file, { altText: altText ?? "" }, onProgress);
+          setNotice(`Image for “${media!.name}” saved.`);
+          load();
+        }}
+        onSaveAlt={async (altText) => {
+          await api.patch(`admin/categories/${media!.id}/image`, { altText });
+          setNotice(`Image description for “${media!.name}” saved.`);
+          load();
+        }}
+        onRemove={async () => {
+          await api.del(`admin/categories/${media!.id}/image`);
+          setNotice(`Image for “${media!.name}” removed.`);
+          load();
+        }}
+        removeMessage={`The uploaded image for “${media?.name ?? ""}” will be deleted. The website then shows the existing artwork or an icon.`}
+        onClose={() => setMedia(null)}
+      />
+
+      <ConfirmDialog
+        open={toggle !== null}
+        title={toggle?.isActive ? "Deactivate category?" : "Activate category?"}
+        message={
+          toggle?.isActive
+            ? `“${toggle.name}” and all of its products will be hidden from the public website. You can activate it again at any time.`
+            : `“${toggle?.name}” will be visible on the public website again (published products only).`
+        }
+        confirmLabel={toggle?.isActive ? "Deactivate" : "Activate"}
+        danger={toggle?.isActive}
+        busy={toggling}
+        onConfirm={confirmToggle}
+        onClose={() => setToggle(null)}
+      />
+    </>
+  );
+}
