@@ -33,6 +33,8 @@ import {
   th,
   AuthImage,
 } from "@/components/ui";
+import { ViewOnWebsite } from "@/components/ViewOnWebsite";
+import { websitePaths } from "@/lib/website";
 
 type Form = { name: string; slug: string; description: string; sortOrder: string; translations: TranslationForm };
 const CATEGORY_RULES: Rules<Form> = {
@@ -214,6 +216,7 @@ export default function CategoriesPage() {
                     <td className={td}>{c.isActive ? <Badge tone="green">Active</Badge> : <Badge>Inactive</Badge>}</td>
                     <td className={`${td} rtable-actions text-right`}>
                       <div className="row-actions">
+                        {c.isActive ? <ViewOnWebsite path={websitePaths.category(c.slug)} name={c.name} /> : null}
                         <Button
                           variant="outline"
                           size="sm"

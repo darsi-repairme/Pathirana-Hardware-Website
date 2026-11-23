@@ -263,6 +263,8 @@ export type StaffMember = {
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  /** Profile photo version (cache key), null when there is no photo (migration 0010; older APIs omit it). */
+  photoVersion?: string | null;
   /** An unused one-time set-up / reset link exists (migration 0008). */
   setupLinkPending?: boolean;
 };
@@ -360,12 +362,47 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
+/**
+ * GET de-duplication: identical GETs that are IN FLIGHT at the same moment share one request (e.g.
+ * the top bar's notification counts and the Dashboard both asking for admin/dashboard on load).
+ * Nothing is kept after the response arrives unless a caller asks for a short `maxAgeMs` (only the
+ * notification counts do); every change made through this client (POST/PATCH/PUT/DELETE or an
+ * upload) clears those kept responses, so staff never see their own change missing.
+ */
+const inflight = new Map<string, Promise<unknown>>();
+const recent = new Map<string, { at: number; data: unknown }>();
+/** Paths some caller allows to be reused briefly (only their responses are kept). */
+const reusable = new Set<string>();
+export const clearRecentGets = () => recent.clear();
+
+function get<T>(path: string, maxAgeMs = 0): Promise<T> {
+  if (maxAgeMs > 0) reusable.add(path);
+  const hit = recent.get(path);
+  if (maxAgeMs > 0 && hit && Date.now() - hit.at < maxAgeMs) return Promise.resolve(hit.data as T);
+  let p = inflight.get(path) as Promise<T> | undefined;
+  if (!p) {
+    p = request<T>("GET", path)
+      .then((data) => {
+        if (reusable.has(path)) recent.set(path, { at: Date.now(), data });
+        return data;
+      })
+      .finally(() => inflight.delete(path));
+    inflight.set(path, p);
+  }
+  return p;
+}
+
+function change<T>(method: string, path: string, body?: unknown): Promise<T> {
+  clearRecentGets();
+  return request<T>(method, path, body).finally(clearRecentGets);
+}
+
 export const api = {
-  get: <T>(path: string) => request<T>("GET", path),
-  post: <T>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}),
-  patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),
-  put: <T>(path: string, body: unknown) => request<T>("PUT", path, body),
-  del: <T = void>(path: string, body?: unknown) => request<T>("DELETE", path, body),
+  get: <T>(path: string, opts?: { maxAgeMs?: number }) => get<T>(path, opts?.maxAgeMs),
+  post: <T>(path: string, body?: unknown) => change<T>("POST", path, body ?? {}),
+  patch: <T>(path: string, body: unknown) => change<T>("PATCH", path, body),
+  put: <T>(path: string, body: unknown) => change<T>("PUT", path, body),
+  del: <T = void>(path: string, body?: unknown) => change<T>("DELETE", path, body),
 };
 
 /** URL (same origin) to preview a product image, including unpublished products. */
@@ -398,19 +435,32 @@ export function uploadImage(
   );
 }
 
-/** multipart/form-data POST of one file (+ text fields) through the admin gateway, with progress. */
+/** URL (same origin, staff-only) of a profile photo; `v` (the photo version) busts the browser cache. */
+export const profilePhotoUrl = (
+  target: { self: true } | { staffId: string },
+  version: string,
+  size: "full" | "thumb" = "thumb",
+) =>
+  `${BASE}/${"self" in target ? "admin/profile/photo" : `admin/staff/${target.staffId}/photo`}?v=${version}${
+    size === "thumb" ? "&size=thumb" : ""
+  }`;
+
+/** multipart/form-data upload (POST, or PUT for replace-style endpoints) of one file (+ text
+ *  fields) through the admin gateway, with progress. */
 export function uploadFile<T>(
   path: string,
   file: File,
   fields: Record<string, string>,
   onProgress: (fraction: number) => void,
+  method: "POST" | "PUT" = "POST",
 ): Promise<T> {
+  clearRecentGets();
   return new Promise((resolve, reject) => {
     const form = new FormData();
     for (const [k, v] of Object.entries(fields)) form.append(k, v);
     form.append("file", file);
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${BASE}/${path}`);
+    xhr.open(method, `${BASE}/${path}`);
     xhr.setRequestHeader("x-ph-admin", "1");
     xhr.setRequestHeader("Accept", "application/json");
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);

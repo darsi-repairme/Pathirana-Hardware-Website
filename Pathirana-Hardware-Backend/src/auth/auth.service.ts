@@ -5,7 +5,15 @@ import { DatabaseService } from "../database/database.service";
 import { hashPassword, passwordProblem, verifyPassword } from "./password";
 import type { Role } from "./roles";
 
-export type AuthStaff = { id: string; email: string; fullName: string; role: Role };
+/** The signed-in staff member. `photoVersion` (profile photo cache key, migration 0010) is read in the
+ *  same session-check query, so showing the avatar costs no extra database round trip. */
+export type AuthStaff = {
+  id: string;
+  email: string;
+  fullName: string;
+  role: Role;
+  photoVersion?: string | null;
+};
 type TokenPayload = { sub: string; role: Role; tv: number };
 type StaffRow = {
   id: string;
@@ -42,7 +50,7 @@ export class AuthService {
   ) {}
 
   async login(email: string, password: string): Promise<{ accessToken: string; staff: AuthStaff }> {
-    const row = await this.db.one<StaffRow>(
+    const row = await this.db.one<StaffRow & { photo_version: string | null }>(
       `SELECT id, email, full_name, role, is_active, token_version, password_hash, failed_login_count, locked_until
          FROM staff WHERE email = $1`,
       [email.trim().toLowerCase()],
@@ -88,14 +96,22 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException("Your session is invalid or has expired.");
     }
-    const row = await this.db.one<StaffRow>(
-      "SELECT id, email, full_name, role, is_active, token_version FROM staff WHERE id = $1",
+    const row = await this.db.one<StaffRow & { photo_version: string | null }>(
+      `SELECT id, email, full_name, role, is_active, token_version,
+              CASE WHEN photo_key IS NULL THEN NULL ELSE floor(extract(epoch FROM photo_updated_at) * 1000)::bigint::text END AS photo_version
+         FROM staff WHERE id = $1`,
       [payload.sub],
     );
     if (!row || !row.is_active || row.token_version !== payload.tv) {
       throw new UnauthorizedException("Your session is invalid or has expired.");
     }
-    return { id: row.id, email: row.email, fullName: row.full_name, role: row.role };
+    return {
+      id: row.id,
+      email: row.email,
+      fullName: row.full_name,
+      role: row.role,
+      photoVersion: row.photo_version,
+    };
   }
 
   /** Signs the staff member out everywhere (all earlier tokens become invalid). */

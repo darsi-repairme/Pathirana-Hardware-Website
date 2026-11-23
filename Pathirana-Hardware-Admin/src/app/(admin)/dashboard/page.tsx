@@ -100,21 +100,6 @@ export default function DashboardPage() {
           aria-hidden="true"
           className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,var(--color-forest-900)_0%,var(--color-forest)_38%,rgb(15_93_58/0.55)_58%,transparent_78%)]"
         />
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 400 120"
-          preserveAspectRatio="none"
-          className="absolute right-0 bottom-0 -z-10 h-16 w-2/3 text-gold-soft/80 sm:h-20"
-        >
-          <path d="M0 120C120 70 250 55 400 20" fill="none" stroke="currentColor" strokeWidth="3" />
-          <path
-            d="M60 120C170 85 290 75 400 50"
-            fill="none"
-            stroke="currentColor"
-            strokeOpacity="0.45"
-            strokeWidth="2"
-          />
-        </svg>
         <div className="max-w-xl px-5 py-7 sm:px-8 sm:py-9 lg:py-10">
           <p className="flex items-center gap-3 text-xs font-semibold tracking-[0.26em] text-gold-soft uppercase">
             <span aria-hidden="true" className="h-8 w-0.5 rounded-full bg-gold-soft" />
@@ -261,23 +246,28 @@ export default function DashboardPage() {
 
             <section
               aria-labelledby="actions-title"
-              className="min-w-0 rounded-[1.25rem] border border-line/70 bg-paper p-5 shadow-[var(--shadow-card)]"
+              className="flex min-w-0 flex-col rounded-[1.25rem] border border-line/70 bg-paper p-5 shadow-[var(--shadow-card)]"
             >
               <h2 id="actions-title" className="flex items-center gap-2 font-display text-lg font-semibold text-forest">
                 <Zap aria-hidden="true" className="size-5 text-brass" /> Quick Actions
               </h2>
+              {/* Balanced 2 × 2 grid that fills the panel (equal cards, equal gaps); one column only
+                  on the narrowest phones. */}
               <ul
-                className={`mt-4 grid grid-cols-2 gap-3 ${isAdmin ? "sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-4"}`}
+                data-quick-actions
+                className="mt-4 grid flex-1 auto-rows-fr grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4"
               >
                 {actions.map(({ label, href, icon: Icon }) => (
                   <li key={label} className="min-w-0">
                     <Link
                       href={href}
                       data-quick-action={label}
-                      className="flex h-full min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border border-line/70 bg-cream/60 px-2 py-4 text-center text-sm font-semibold text-charcoal transition-colors hover:border-brass hover:bg-cream"
+                      className="group flex h-full min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border border-line/70 bg-cream/60 px-3 py-5 text-center text-sm font-semibold text-charcoal transition-[border-color,background-color,transform] duration-200 outline-none hover:-translate-y-0.5 hover:border-brass hover:bg-cream focus-visible:ring-2 focus-visible:ring-brass sm:text-[0.95rem] lg:min-h-32"
                     >
-                      <Icon aria-hidden="true" strokeWidth={1.75} className="size-6 text-forest" />
-                      <span className="leading-snug">{label}</span>
+                      <span className="inline-flex size-12 items-center justify-center rounded-full bg-paper text-forest ring-1 ring-line/70 transition-colors group-hover:ring-brass/60">
+                        <Icon aria-hidden="true" strokeWidth={1.75} className="size-6" />
+                      </span>
+                      <span className="leading-snug [overflow-wrap:break-word]">{label}</span>
                     </Link>
                   </li>
                 ))}

@@ -68,7 +68,8 @@ class TokenQuery {
 }
 
 const COLUMNS = `id, email, full_name AS "fullName", role, is_active AS "isActive",
-  last_login_at AS "lastLoginAt", created_at AS "createdAt"`;
+  last_login_at AS "lastLoginAt", created_at AS "createdAt",
+  CASE WHEN photo_key IS NULL THEN NULL ELSE floor(extract(epoch FROM photo_updated_at) * 1000)::bigint::text END AS "photoVersion"`;
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 

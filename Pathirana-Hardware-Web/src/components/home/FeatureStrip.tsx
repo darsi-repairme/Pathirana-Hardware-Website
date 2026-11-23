@@ -30,7 +30,7 @@ export function FeatureStrip() {
                   strokeWidth={1.5}
                   className="size-8 shrink-0 text-brass transition-transform duration-500 group-hover:-translate-y-1 motion-reduce:transition-none min-[480px]:size-10"
                 />
-                <div>
+                <div className="min-w-0">
                   <h2 className="text-[0.95rem] font-semibold text-charcoal max-[479px]:leading-snug min-[480px]:text-base">
                     <T>{title}</T>
                   </h2>

@@ -33,7 +33,11 @@ export function GalleryBrowser({ collections }: { collections: GalleryCollection
     }
     return [...byName.values()];
   }, [live.photos, live.base, pick, t]);
-  const groups = [...liveGroups, ...collections].filter((c) => c.images.length > 0);
+  // Connected to the API, the Admin Gallery is the ONLY source: staff upload, edit, hide, reorder and
+  // delete there, and nothing else appears. The images bundled with the site are used only by a
+  // static build with no API at all (never as a stand-in for an empty Gallery or a failed request).
+  const managed = live.status === "live";
+  const groups = [...liveGroups, ...(live.status === "static" ? collections : [])].filter((c) => c.images.length > 0);
   const shown = active === "all" ? groups : groups.filter((c) => c.id === active);
   const images = shown.flatMap((g) =>
     g.images.map((img) => ({
@@ -43,8 +47,44 @@ export function GalleryBrowser({ collections }: { collections: GalleryCollection
   );
   const hasIllustrations = shown.some((g) => g.kind === "illustration");
 
+  // While the live Gallery is loading, show a placeholder (not the bundled images, which may have
+  // been replaced or hidden in the Admin).
+  if (live.status === "error")
+    return (
+      <div data-gallery-status="error" role="alert" className="mt-2 flex flex-col items-center gap-3 text-center">
+        <p className="text-sm text-ink-muted">{t("The gallery could not be loaded. Please try again.")}</p>
+        <button
+          type="button"
+          onClick={live.retry}
+          className="inline-flex min-h-11 items-center rounded-full border border-line-strong bg-white px-5 text-sm font-semibold text-forest hover:border-brass"
+        >
+          {t("Try again")}
+        </button>
+      </div>
+    );
+  if (managed && groups.length === 0)
+    return (
+      <p data-gallery-status="empty" className="mt-2 text-center text-sm text-ink-muted">
+        {t("New photos of our store will appear here soon.")}
+      </p>
+    );
+
+  if (live.status === "loading")
+    return (
+      <div data-gallery-status="loading" aria-busy="true" className="mt-2">
+        <p role="status" className="text-center text-sm text-ink-muted">
+          {t("Loading gallery…")}
+        </p>
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <span key={i} aria-hidden="true" className="aspect-[4/3] animate-pulse rounded-2xl bg-cream-deep" />
+          ))}
+        </div>
+      </div>
+    );
+
   return (
-    <div>
+    <div data-gallery-status={managed ? "managed" : "static"}>
       {groups.length > 1 ? (
         <div role="group" aria-label={t("Filter gallery")} className="flex flex-wrap justify-center gap-2">
           {[{ id: "all", title: t("All") }, ...groups.map((g) => ({ ...g, title: t(g.title) }))].map((g) => {
@@ -78,6 +118,10 @@ export function GalleryBrowser({ collections }: { collections: GalleryCollection
               })}
             </span>
           </>
+        ) : managed ? (
+          <span>
+            {images.length === 1 ? t("1 image in our gallery.") : t("{n} images in our gallery.", { n: images.length })}
+          </span>
         ) : (
           <span>
             {images.length === 1

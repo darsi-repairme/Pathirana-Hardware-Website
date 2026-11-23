@@ -63,6 +63,9 @@
     "storage:migrate-local": "tsx scripts/storage-migrate-local.ts",
     "start:cloud": "node dist-cloud/main.js",
     "admin:create": "tsx scripts/create-admin.ts",
+    "owner:code": "tsx scripts/owner-code.ts",
+    "gallery:import": "tsx scripts/import-website-gallery.ts",
+    "seed:starter": "tsx scripts/seed-starter-catalogue.ts",
     "seed:catalogue": "tsx scripts/seed-catalogue.ts",
     "areas:add": "tsx scripts/add-service-areas.ts"
   }

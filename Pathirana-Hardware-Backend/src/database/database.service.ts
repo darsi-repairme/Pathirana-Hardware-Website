@@ -15,7 +15,11 @@ export class DatabaseService implements OnModuleDestroy {
     this.pool = new Pool({
       ...pgConnectionOptions(env), // TLS with full certificate verification when DATABASE_SSL=true
       max: 10,
-      idleTimeoutMillis: 30_000,
+      // The database is a long network round trip away (~200 ms; a NEW TLS connection ~1.5 s), so idle
+      // connections are kept for 10 minutes instead of 30 s: staff pausing briefly between pages
+      // no longer pay a reconnect. TCP keep-alive stops idle connections being dropped silently.
+      idleTimeoutMillis: 600_000,
+      keepAlive: true,
       connectionTimeoutMillis: 5_000,
       application_name: "pathirana-web-api",
     });

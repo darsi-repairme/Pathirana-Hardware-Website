@@ -297,6 +297,17 @@
     justify-content: center;
     column-gap: 1.5rem;
     row-gap: 0.25rem;
+    max-width: 100%;
+  }
+  /* Narrow phones: a long translated label (e.g. Tamil "Call …") may wrap inside the screen
+     instead of pushing the page sideways. */
+  @media (max-width: 479.98px) {
+    .contact-actions > .contact-action {
+      max-width: 100%;
+      white-space: normal;
+      text-align: center;
+      overflow-wrap: break-word;
+    }
   }
 
   /* Offers: same circle as Call, with a brass-gold ring and a small red "Offers" badge. */
@@ -1511,7 +1522,21 @@ html:is([lang^="ta"], [lang^="si"]) .bp-words {
   }
 }
 
-/* Service actions (View Service · Enquire): compact pills on phones, never two-line labels. */
+/* Service actions (View Service · Enquire), in every language and container width: ServiceActions
+   measures the wider button's one-line width into --pair-min, so the .btn-pair grid shows two EQUAL
+   columns only when both labels fit on one line and otherwise stacks them at full width. The
+   fallback (before measuring / without JS) is a safe estimate. */
+.service-actions-wrap {
+  --pair-min: 11rem;
+}
+:root:is([lang^="ta"], [lang^="si"]) .service-actions-wrap:not([style*="--pair-min"]) {
+  --pair-min: 14rem;
+}
+/* The pair itself always uses the wrapper's (measured) value, overriding the generic Tamil /
+   Sinhala .btn-pair minimum. */
+:root .service-actions-wrap > .btn-pair.service-actions {
+  --pair-min: inherit;
+}
 @media (max-width: 639.98px) {
   .service-actions a {
     min-height: 2.75rem;
@@ -1529,9 +1554,6 @@ html:is([lang^="ta"], [lang^="si"]) .bp-words {
    screens, labels get slightly tighter type and padding (never below a readable 0.8rem). */
 :root:is([lang^="ta"], [lang^="si"]) .btn-pair {
   --pair-min: 16rem;
-}
-:root:is([lang^="ta"], [lang^="si"]) .service-actions {
-  --pair-min: 12.5rem;
 }
 @media (min-width: 1024px) and (max-width: 1279.98px) {
   :root:is([lang^="ta"], [lang^="si"]) .home-contact-pair {

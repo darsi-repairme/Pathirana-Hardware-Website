@@ -25,6 +25,8 @@ import {
   SearchBox,
   Spinner,
 } from "@/components/ui";
+import { ViewOnWebsite } from "@/components/ViewOnWebsite";
+import { websitePaths } from "@/lib/website";
 
 const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -298,6 +300,7 @@ export function GalleryManager() {
                   {g.collection ? ` · ${g.collection}` : ""} · {g.width}×{g.height}
                 </p>
                 <div className="row-actions justify-start">
+                  {g.isPublished ? <ViewOnWebsite path={websitePaths.gallery()} name={g.title} /> : null}
                   <Button size="sm" variant="ghost" onClick={() => openEdit(g)} aria-label={`Edit ${g.title}`}>
                     <Pencil aria-hidden="true" className="size-4" /> Edit
                   </Button>

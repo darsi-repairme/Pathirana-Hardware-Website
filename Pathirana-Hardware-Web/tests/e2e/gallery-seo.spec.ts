@@ -7,6 +7,19 @@ test.describe("Gallery", () => {
   test("production gallery: filters, labelled illustrations, collage and lightbox", async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto("/gallery/");
+    // Built with a live API, the Gallery first shows a loading placeholder (never images that may have
+    // been hidden in the Admin); with no published Admin photos it then shows the bundled collections.
+    await expect(page.locator("[data-gallery-status]")).not.toHaveAttribute("data-gallery-status", "loading");
+    // Connected to the API, ONLY the Admin Gallery is shown (the isolated test API has no photos, so
+    // the honest empty state appears, never the bundled images). The bundled collections below are
+    // checked on a static build (no API).
+    const mode = await page.locator("[data-gallery-status]").getAttribute("data-gallery-status");
+    if (mode !== "static") {
+      await expect(page.locator("[data-gallery-status=empty]")).toBeVisible();
+      await expect(page.locator("main ul img")).toHaveCount(0);
+      expect(errors).toEqual([]);
+      return;
+    }
     const thumbs = page.locator("main ul button", { hasText: "View larger image" });
     const total = await thumbs.count();
     expect(total).toBeGreaterThanOrEqual(10);

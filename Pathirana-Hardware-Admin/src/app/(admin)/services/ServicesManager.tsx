@@ -32,6 +32,8 @@ import {
   td,
   th,
 } from "@/components/ui";
+import { ViewOnWebsite } from "@/components/ViewOnWebsite";
+import { websitePaths } from "@/lib/website";
 
 const ICON_LABEL: Record<SiteService["icon"], string> = {
   bricks: "Bricks",
@@ -300,6 +302,7 @@ export function ServicesManager() {
                   </td>
                   <td className={`${td} rtable-actions text-right`}>
                     <div className="row-actions">
+                      {s.isPublished ? <ViewOnWebsite path={websitePaths.service(s.slug)} name={s.title} /> : null}
                       <Button variant="ghost" onClick={() => open(s)} aria-label={`Edit ${s.title}`}>
                         <Pencil aria-hidden="true" className="size-4" /> Edit
                       </Button>

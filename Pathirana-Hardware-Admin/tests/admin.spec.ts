@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { API_PORT, BACKEND_DIR, STAFF } from "./stack";
+import { API_PORT, BACKEND_DIR, STAFF, WEBSITE_URL } from "./stack";
 
 /**
  * Admin end-to-end tests on the isolated stack (throwaway database).
@@ -451,10 +451,14 @@ test.describe("Admin", () => {
     await expect(page.getByRole("img", { name: "Test second photo edited" })).toBeVisible();
 
     await page.getByRole("checkbox", { name: /^Published/ }).check();
+    // Save Changes → back to the Products list, which confirms the save.
+    const editUrl = page.url();
     await page.getByRole("button", { name: "Save Changes" }).click();
-    await expect(page.getByRole("status").first()).toContainText("Changes saved.");
+    await expect(page).toHaveURL(/\/products\?saved=/);
+    await expect(page.getByRole("status").first()).toContainText(`Changes to “${name}” saved.`);
     const [row] = await db<{ is_published: boolean }>("SELECT is_published FROM products WHERE name = $1", [name]);
     expect(row!.is_published).toBe(true);
+    await page.goto(editUrl);
 
     // Removing the main image promotes the remaining one.
     await page.getByRole("button", { name: "Remove image: Test product photo" }).click();
@@ -468,7 +472,7 @@ test.describe("Admin", () => {
     await page.getByLabel("Status").selectOption("draft");
     await expect(page.getByText(name)).toHaveCount(0);
     await page.getByLabel("Status").selectOption("published");
-    const item = page.locator("li", { hasText: name });
+    const item = page.locator("[data-product-row]", { hasText: name });
     await expect(item).toContainText("Published");
     await expect(item).toContainText("Available");
     await expect(item).toContainText("LKR 2,250.00");
@@ -1416,7 +1420,10 @@ test.describe("Role dashboards, audit log, sign-out and branding", () => {
     await a.goto("/audit-log");
     await expect(a.getByRole("heading", { name: "Audit Log", level: 1 })).toBeVisible();
     // The history itself (or its empty state when this test runs on a fresh database).
-    await expect(a.locator("[data-audit-log]").or(a.getByText("No matching activity."))).toBeVisible();
+    // Table on wide screens, one card per event on phones (whichever is shown).
+    await expect(
+      a.locator("[data-audit-table]:visible, [data-audit-cards]:visible").or(a.getByText("No matching activity.")),
+    ).toBeVisible();
     await expect(a.getByRole("heading", { name: "Administrators only" })).toHaveCount(0);
     await admin.close();
 
@@ -1515,6 +1522,33 @@ test.describe("Role dashboards, audit log, sign-out and branding", () => {
       data: { title: "Test Past Offer", discountType: "percentage", discountValue: 5, startsOn: yesterday },
     });
     expect(res.status()).toBe(400);
+  });
+});
+
+test.describe("Website links (WEBSITE_URL)", () => {
+  test.use({ storageState: path.join(AUTH, "editor.json") });
+
+  test("View Website in the menu; View on website opens the public page of published records", async ({ page }) => {
+    await page.goto("/services");
+    // Desktop: sidebar; phones / tablets: inside the menu drawer.
+    if (await page.getByRole("button", { name: "Open menu" }).isVisible())
+      await page.getByRole("button", { name: "Open menu" }).click();
+    const site = page.locator("a[data-view-website]:visible");
+    await expect(site).toHaveAttribute("href", `${WEBSITE_URL}/`);
+    await expect(site).toHaveAttribute("target", "_blank");
+    await expect(site).toHaveAttribute("rel", /noopener/);
+    if (await page.getByRole("dialog", { name: "Menu" }).isVisible()) await page.keyboard.press("Escape");
+
+    // An approved service has its own page; the link carries the exact public address.
+    const row = page.locator("tr[data-service='bulk-orders']");
+    await expect(row.locator("a[data-view-on-website]")).toHaveAttribute(
+      "href",
+      `${WEBSITE_URL}/services/bulk-orders/`,
+    );
+    // Hidden services (not on the website) get no link.
+    for (const r of await page.locator("tr[data-service]").all()) {
+      if ((await r.innerText()).includes("Hidden")) await expect(r.locator("a[data-view-on-website]")).toHaveCount(0);
+    }
   });
 });
 

@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Copy, KeyRound, Pencil, Plus, Power, UserCog, Users } from "lucide-react";
+import { Camera, Copy, KeyRound, Pencil, Plus, Power, UserCog, Users } from "lucide-react";
 import { api, ApiError, formatDate, type Role, type StaffMember } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import { useStaff } from "@/components/AdminShell";
+import { useOwnPhoto, useStaff } from "@/components/AdminShell";
+import { Avatar, ProfilePhotoEditor } from "@/components/ProfilePhoto";
 import { email, required, useValidation, type Rules } from "@/lib/useValidation";
 import {
   Alert,
@@ -56,6 +57,8 @@ export function StaffManager() {
   const [dialogError, setDialogError] = useState<ApiError | null>(null);
   const [link, setLink] = useState<LinkInfo | null>(null);
   const [copied, setCopied] = useState(false);
+  const ownPhoto = useOwnPhoto();
+  const [photoFor, setPhotoFor] = useState<StaffMember | null>(null);
 
   const items = list.data;
   const shown = useMemo(() => {
@@ -213,10 +216,20 @@ export function StaffManager() {
                 return (
                   <tr key={s.id} data-staff={s.email} className="hover:bg-cream/40">
                     <td className={`${td} rtable-main`}>
-                      <p className="font-semibold text-charcoal">
-                        {s.fullName} {self ? <span className="text-xs font-normal text-ink-muted">(you)</span> : null}
-                      </p>
-                      <p className="text-xs [overflow-wrap:anywhere] text-ink-muted">{s.email}</p>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar
+                          name={s.fullName}
+                          target={self ? { self: true } : { staffId: s.id }}
+                          version={self ? ownPhoto.version : s.photoVersion}
+                        />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-charcoal">
+                            {s.fullName}{" "}
+                            {self ? <span className="text-xs font-normal text-ink-muted">(you)</span> : null}
+                          </p>
+                          <p className="text-xs [overflow-wrap:anywhere] text-ink-muted">{s.email}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className={td}>
                       <Badge tone={s.role === "admin" ? "gold" : "green"}>
@@ -237,6 +250,10 @@ export function StaffManager() {
                         <Button size="sm" variant="ghost" onClick={() => openForm(s)}>
                           <Pencil aria-hidden="true" className="size-4" /> Edit
                           <span className="sr-only"> {s.fullName}</span>
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setPhotoFor(s)} data-staff-photo-action>
+                          <Camera aria-hidden="true" className="size-4" /> Photo
+                          <span className="sr-only"> of {s.fullName}</span>
                         </Button>
                         {self ? null : (
                           <>
@@ -461,6 +478,28 @@ export function StaffManager() {
         }
         onClose={() => setLinkFor(null)}
       />
+
+      {/* Profile photo (admins: any staff member; their own updates the account menu too) */}
+      <Dialog
+        open={photoFor !== null}
+        title={photoFor ? `Profile photo: ${photoFor.fullName}` : ""}
+        onClose={() => {
+          setPhotoFor(null);
+          list.reload();
+        }}
+      >
+        {photoFor ? (
+          <ProfilePhotoEditor
+            name={photoFor.fullName}
+            target={photoFor.id === me.id ? { self: true } : { staffId: photoFor.id }}
+            version={photoFor.id === me.id ? ownPhoto.version : (photoFor.photoVersion ?? null)}
+            onChange={(v) => {
+              if (photoFor.id === me.id) ownPhoto.setVersion(v);
+              setPhotoFor({ ...photoFor, photoVersion: v });
+            }}
+          />
+        ) : null}
+      </Dialog>
 
       {/* Show the link once */}
       <Dialog open={link !== null} title="One-time password link" onClose={() => setLink(null)}>

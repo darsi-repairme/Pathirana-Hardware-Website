@@ -164,3 +164,69 @@ dialog.ph-dialog::backdrop {
     border-top: 1px solid var(--color-line);
   }
 }
+
+/* Admin sidebar / drawer: a thin, subtle scrollbar that matches the dark-green sidebar
+   (still visible and draggable; never a horizontal one). */
+.admin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(232 190 79 / 0.35) transparent;
+  scrollbar-gutter: stable;
+}
+.admin-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 0;
+}
+.admin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(232 190 79 / 0.35);
+}
+.admin-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgb(232 190 79 / 0.6);
+}
+
+/* Products list as cards (below 1280 px): Price · Availability · Status as three equal columns,
+   each with its label above the value, so every card lines up the same way. */
+@media (max-width: 1279.98px) {
+  table.rtable.product-rtable tbody td[data-cell] {
+    flex: 1 1 0;
+    min-width: 6.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+  table.rtable.product-rtable tbody td[data-cell]::before {
+    content: attr(data-label);
+  }
+  /* Price on its own (prominent) line; Availability and Status side by side below it. */
+  table.rtable.product-rtable tbody td[data-cell="price"] {
+    flex: 1 1 100%;
+  }
+  table.rtable.product-rtable tbody td[data-cell="price"] [data-price] {
+    font-size: 0.95rem;
+  }
+}
+
+/* Product prices: "LKR" and the amount as two parts. Desktop table (≥ 1280 px): the label at the left
+   edge of the price column and the amount at the right, so the LKR labels AND the decimals line up in
+   every row ("Contact for Price" starts where "LKR" starts). Cards: label and amount side by side. */
+.money {
+  display: inline-flex;
+  gap: 0.3em;
+}
+@media (min-width: 1280px) {
+  [data-product-table] .price-cell {
+    width: 100%;
+  }
+  [data-product-table] .money {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+  [data-product-table] .price-note {
+    text-align: right;
+  }
+}

@@ -112,7 +112,8 @@ export function QuotationList({ initialStatus }: { initialStatus: string }) {
                     {r.phone} · {r.location} · {formatDateTime(r.createdAt)}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+                {/* Fixed-width columns on wide screens so details and status line up from row to row. */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted md:w-48 md:shrink-0">
                   <span className="inline-flex items-center gap-1">
                     {r.fulfilment === "delivery" ? (
                       <Truck aria-hidden="true" className="size-3.5" />
@@ -130,8 +131,10 @@ export function QuotationList({ initialStatus }: { initialStatus: string }) {
                     </span>
                   ) : null}
                 </div>
-                <div className="flex items-center justify-between gap-3 md:w-56 md:justify-end">
-                  <Badge tone={STATUS_TONE[r.status]}>{QUOTATION_STATUS_LABEL[r.status]}</Badge>
+                <div className="flex items-center justify-between gap-3 md:w-64 md:shrink-0">
+                  <span className="md:w-28">
+                    <Badge tone={STATUS_TONE[r.status]}>{QUOTATION_STATUS_LABEL[r.status]}</Badge>
+                  </span>
                   <Link
                     href={`/quotations/${r.id}`}
                     className="inline-flex h-9 items-center gap-1.5 rounded-full bg-forest px-3.5 text-[0.8125rem] font-semibold whitespace-nowrap text-white hover:bg-forest-800"

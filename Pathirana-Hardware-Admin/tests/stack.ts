@@ -13,6 +13,8 @@ import { pathToFileURL } from "node:url";
 
 export const BACKEND_DIR = process.env.BACKEND_DIR ?? path.resolve(__dirname, "../../Pathirana-Hardware-Backend");
 export const API_PORT = 4310;
+/** Public website address given to the Admin under test ("View Website" / "View on website" links). */
+export const WEBSITE_URL = "https://www.example-shop.test";
 /** Overridable (E2E_ADMIN_PORT) so the tests can run while the live admin uses 4400. */
 export const ADMIN_PORT = Number(process.env.E2E_ADMIN_PORT || 4400);
 export const STAFF = {
@@ -127,6 +129,8 @@ export async function startStack(): Promise<Stack> {
       ...process.env,
       NODE_ENV: "production",
       BACKEND_API_URL: `http://127.0.0.1:${API_PORT}`,
+      // Test value: only checked as link targets (nothing is fetched from it).
+      WEBSITE_URL: WEBSITE_URL,
       ADMIN_COOKIE_SECURE: "false",
       ADMIN_TRUST_PROXY: "true",
     },

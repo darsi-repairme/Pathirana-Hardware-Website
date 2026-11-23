@@ -10,9 +10,19 @@ import { ENV, type Env } from "../config/env";
  *
  *  - catalogue areas (products, brands, categories) → the catalogue bucket
  *  - quotations (customer reference photos)          → the separate private bucket
+ *  - staff (profile photos, staff-only reads)        → the catalogue bucket, path staff/…
  */
-export type MediaArea = "products" | "brands" | "categories" | "services" | "gallery" | "quotations";
-const AREAS = new Set<MediaArea>(["products", "brands", "categories", "services", "gallery", "quotations"]);
+export type MediaArea =
+  "products" | "brands" | "categories" | "services" | "gallery" | "quotations" | "staff";
+const AREAS = new Set<MediaArea>([
+  "products",
+  "brands",
+  "categories",
+  "services",
+  "gallery",
+  "quotations",
+  "staff",
+]);
 /** Only server-generated names: <uuid>.webp or <uuid>-thumb.webp (no paths, no user input). */
 const NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(-thumb)?\.webp$/;
 

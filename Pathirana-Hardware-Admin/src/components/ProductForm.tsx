@@ -237,7 +237,9 @@ export function ProductForm({ productId, created = false }: { productId?: string
         saved = await api.patch<Product>(`admin/products/${productId}/publication`, { published: form.published });
       }
       setProduct(saved);
-      setNotice("Changes saved.");
+      // Edit Product → saved → back to the Products list (which confirms the save).
+      router.push(`/products?saved=${encodeURIComponent(saved.name)}`);
+      return;
     } catch (err) {
       setError(err as ApiError);
     } finally {

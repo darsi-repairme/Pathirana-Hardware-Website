@@ -3,7 +3,7 @@ import { cookies, headers } from "next/headers";
 import { config, SESSION_COOKIE } from "./config";
 
 export type StaffRole = "admin" | "editor";
-export type Staff = { id: string; email: string; fullName: string; role: StaffRole };
+export type Staff = { id: string; email: string; fullName: string; role: StaffRole; photoVersion?: string | null };
 
 /**
  * Client IP to forward to the API (for per-device rate limiting), or undefined.

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { currentStaff, SessionCheckUnavailable, type Staff } from "@/lib/server/backend";
 import { AdminShell } from "@/components/AdminShell";
+import { normaliseWebsiteUrl } from "@/lib/website";
 
 /** Every admin page: the session is validated with the API on each request. */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -37,5 +38,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     const path = (await headers()).get("x-ph-path") ?? "";
     redirect(`/api/session/expired${path ? `?next=${encodeURIComponent(path)}` : ""}`);
   }
-  return <AdminShell staff={staff}>{children}</AdminShell>;
+  return (
+    <AdminShell staff={staff} websiteUrl={normaliseWebsiteUrl(process.env.WEBSITE_URL)}>
+      {children}
+    </AdminShell>
+  );
 }

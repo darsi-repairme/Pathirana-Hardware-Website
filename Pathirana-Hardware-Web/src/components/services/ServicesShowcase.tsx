@@ -176,9 +176,14 @@ export function ServicesShowcase() {
             </span>
           </p>
           {/* h2: the showcase sits directly under the page h1 (/services/). */}
-          <h2 className="mt-3 flex items-center justify-center gap-3 font-display text-[clamp(1.6rem,6vw,2.35rem)] leading-tight font-semibold text-forest lg:justify-start">
+          {/* Phones / tablets: icon centred above the (balanced, naturally wrapping) title;
+              desktop: icon beside a left-aligned title. */}
+          <h2
+            data-service-heading
+            className="mt-3 flex flex-col items-center gap-2 font-display text-[clamp(1.6rem,6vw,2.35rem)] leading-tight font-semibold text-forest lg:flex-row lg:items-center lg:gap-3"
+          >
             <CurrentIcon aria-hidden="true" strokeWidth={1.6} className="size-7 shrink-0 text-brass" />
-            {cur.title}
+            <span className="max-w-full min-w-0 [text-wrap:balance]">{cur.title}</span>
           </h2>
           <span
             aria-hidden="true"

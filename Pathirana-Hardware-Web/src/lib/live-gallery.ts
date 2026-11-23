@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { GalleryImage } from "@/content/gallery";
 import { apiGet, getApiBase } from "./api";
 import type { LocaleText } from "./live-services";
@@ -40,8 +40,15 @@ export function toGalleryImage(p: LivePhoto, base: string, text: { alt: string; 
 
 export type LiveGalleryStatus = "static" | "loading" | "live" | "error";
 
-export function useLiveGallery(): { photos: LivePhoto[]; status: LiveGalleryStatus; base: string } {
+export function useLiveGallery(): {
+  photos: LivePhoto[];
+  status: LiveGalleryStatus;
+  base: string;
+  /** Loads the Gallery again (after an error). */
+  retry: () => void;
+} {
   const base = getApiBase();
+  const [nonce, setNonce] = useState(0);
   const [state, setState] = useState<{ photos: LivePhoto[]; status: LiveGalleryStatus }>(() => ({
     photos: [],
     status: base ? "loading" : "static",
@@ -55,6 +62,10 @@ export function useLiveGallery(): { photos: LivePhoto[]; status: LiveGalleryStat
     return () => {
       active = false;
     };
-  }, [base]);
-  return { ...state, base: base ?? "" };
+  }, [base, nonce]);
+  const retry = useCallback(() => {
+    setState((s) => ({ ...s, status: "loading" }));
+    setNonce((n) => n + 1);
+  }, []);
+  return { ...state, base: base ?? "", retry };
 }

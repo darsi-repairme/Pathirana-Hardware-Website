@@ -44,8 +44,12 @@ export class DashboardController {
 
   @Get()
   async get(@CurrentStaff() staff: AuthStaff) {
-    const counts = await this.db.one<Counts>(
-      `SELECT
+    // Counts and recent activity are independent: run them in parallel (each is a full network
+    // round trip to the database, ~200 ms), instead of one after the other.
+    const showActivity = roleHas(staff.role, "audit:view");
+    const [counts, activity] = await Promise.all([
+      this.db.one<Counts>(
+        `SELECT
          (SELECT count(*)::int FROM products) AS products,
          (SELECT count(*)::int FROM products WHERE is_published) AS "publishedProducts",
          (SELECT count(*)::int FROM categories) AS categories,
@@ -53,16 +57,18 @@ export class DashboardController {
          (SELECT count(*)::int FROM delivery_areas WHERE is_active AND archived_at IS NULL) AS "activeDeliveryAreas",
          (SELECT count(*)::int FROM quotation_requests WHERE status = 'new') AS "newQuotations",
          (SELECT count(*)::int FROM customer_feedback WHERE status = 'pending') AS "pendingFeedback"`,
-    );
-    if (!roleHas(staff.role, "audit:view")) return { counts };
-    const activity = await this.db.query(
-      `SELECT a.id::text AS id, a.action, a.entity_type AS "entityType", a.created_at AS "createdAt",
+      ),
+      showActivity
+        ? this.db.query(
+            `SELECT a.id::text AS id, a.action, a.entity_type AS "entityType", a.created_at AS "createdAt",
               s.full_name AS "staffName"
          FROM audit_log a LEFT JOIN staff s ON s.id = a.staff_id
         ORDER BY a.created_at DESC, a.id DESC
         LIMIT 8`,
-    );
-    return { counts, activity };
+          )
+        : Promise.resolve(null),
+    ]);
+    return showActivity ? { counts, activity } : { counts };
   }
 }
 

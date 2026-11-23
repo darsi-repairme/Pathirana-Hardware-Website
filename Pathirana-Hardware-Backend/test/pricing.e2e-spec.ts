@@ -404,6 +404,7 @@ describe("Migration 0002 on a database with existing (0001) data", () => {
         "0007_customer_feedback.sql",
         "0008_admin_services_gallery_staff.sql",
         "0009_offers.sql",
+        "0010_staff_profile_photos.sql",
       ]);
       const p = (await db.query("SELECT * FROM products WHERE id = $1", [pid])).rows[0];
       expect(p).toMatchObject({

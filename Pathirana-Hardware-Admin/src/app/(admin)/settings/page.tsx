@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { KeyRound, LogOut, UserRound } from "lucide-react";
+import { Camera, KeyRound, LogOut, UserRound } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
-import { useStaff } from "@/components/AdminShell";
+import { useOwnPhoto, useStaff } from "@/components/AdminShell";
+import { ProfilePhotoEditor } from "@/components/ProfilePhoto";
 import { Alert, Button, Card, Field, Input, PageHeader } from "@/components/ui";
 import { useValidation, type Rules } from "@/lib/useValidation";
 
@@ -25,6 +26,7 @@ const RULES: Rules<PasswordForm> = {
  */
 export default function SettingsPage() {
   const me = useStaff();
+  const photo = useOwnPhoto();
   const router = useRouter();
   const toLogin = () => {
     router.replace("/login?signedOut=1");
@@ -60,8 +62,21 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" description="Your account and sign-in security." />
+      <PageHeader title="Settings" description="Your account, profile photo and sign-in security." />
       <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="p-5 sm:p-6 lg:col-span-2">
+          <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-forest">
+            <Camera aria-hidden="true" className="size-5 text-brass" /> Profile photo
+          </h2>
+          <div className="mt-4">
+            <ProfilePhotoEditor
+              name={me.fullName}
+              target={{ self: true }}
+              version={photo.version}
+              onChange={photo.setVersion}
+            />
+          </div>
+        </Card>
         <Card className="p-5 sm:p-6">
           <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-forest">
             <UserRound aria-hidden="true" className="size-5 text-brass" /> Your account

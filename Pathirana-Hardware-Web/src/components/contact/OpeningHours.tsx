@@ -48,14 +48,16 @@ export function OpeningHours({ className = "" }: { className?: string }) {
           aria-expanded={open}
           aria-controls={`${id}-panel`}
           onClick={() => setOpen((o) => !o)}
-          className="group flex w-full items-center gap-3 px-5 pt-6 pb-5 text-left outline-none focus-visible:bg-cream/60 sm:px-7"
+          className="group flex w-full items-start gap-3 px-4 pt-6 pb-5 text-left outline-none focus-visible:bg-cream/60 min-[400px]:px-5 sm:items-center sm:gap-4 sm:px-7"
         >
           <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-forest text-gold-soft">
             <Clock aria-hidden="true" className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block font-display text-2xl font-semibold text-forest">{t("Opening Hours")}</span>
-            <span className="mt-0.5 block text-sm text-ink-muted">
+            <span className="block font-display text-[1.35rem] leading-snug font-semibold [text-wrap:balance] text-forest sm:text-2xl">
+              {t("Opening Hours")}
+            </span>
+            <span className="mt-1 block text-sm leading-relaxed text-ink-muted">
               {business.openingHours.map((e, i) => (
                 <span key={e.days} className="block sm:inline">
                   {i ? <span className="hidden sm:inline"> · </span> : null}
@@ -82,12 +84,18 @@ export function OpeningHours({ className = "" }: { className?: string }) {
         inert={!open}
       >
         <div className="min-h-0 overflow-hidden">
-          <dl className="mx-5 divide-y divide-line/70 border-t border-line/70 sm:mx-7" data-opening-days>
+          <dl
+            className="mx-4 divide-y divide-line/70 border-t border-line/70 min-[400px]:mx-5 sm:mx-7"
+            data-opening-days
+          >
             {rows.map((r) => (
-              <div key={r.day} className="flex items-baseline justify-between gap-x-6 py-2.5">
-                <dt className="font-semibold text-charcoal">{t(r.day)}</dt>
+              <div
+                key={r.day}
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2.5 leading-relaxed"
+              >
+                <dt className="min-w-0 font-semibold text-charcoal">{t(r.day)}</dt>
                 <dd
-                  className={`text-right font-semibold whitespace-nowrap tabular-nums ${
+                  className={`ml-auto text-right font-semibold whitespace-nowrap tabular-nums ${
                     r.hours === "Closed" ? "text-logo-red" : "text-forest"
                   }`}
                 >
@@ -96,7 +104,7 @@ export function OpeningHours({ className = "" }: { className?: string }) {
               </div>
             ))}
           </dl>
-          <p className="mx-5 mt-3 mb-6 rounded-xl bg-cream/80 px-4 py-3 text-sm text-ink-muted sm:mx-7">
+          <p className="mx-4 mt-3 mb-6 rounded-xl bg-cream/80 px-4 py-3 text-sm leading-relaxed text-ink-muted min-[400px]:mx-5 sm:mx-7">
             {t("Public holiday opening hours may differ.")}
           </p>
         </div>

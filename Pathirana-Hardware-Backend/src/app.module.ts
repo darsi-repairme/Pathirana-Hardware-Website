@@ -13,6 +13,8 @@ import { MediaStorageModule } from "./media/media-storage";
 import { QuotationsModule } from "./quotations/quotations";
 import { AuditLogController, DashboardController } from "./staff/dashboard.controller";
 import { PasswordSetupController, StaffController } from "./staff/staff.controller";
+import { OwnerSetupController } from "./staff/owner-setup.controller";
+import { ProfilePhotoModule } from "./staff/profile-photo";
 
 @Module({})
 export class AppModule {
@@ -32,11 +34,13 @@ export class AppModule {
         QuotationsModule,
         SiteModule,
         FeedbackModule,
+        ProfilePhotoModule,
       ],
       controllers: [
         HealthController,
         StaffController,
         PasswordSetupController,
+        OwnerSetupController,
         DashboardController,
         AuditLogController,
       ],

@@ -34,12 +34,12 @@ export function AdminBrand({
         width={420}
         height={345}
         priority={priority}
-        className={`w-auto shrink-0 ${stack ? "h-16 sm:h-[4.5rem]" : compact ? "h-9" : "h-10"}`}
+        className={`w-auto shrink-0 ${stack ? "h-16 sm:h-[4.5rem]" : "h-9"}`}
       />
       <span className={compact ? "sr-only" : `min-w-0 ${stack ? "mt-4" : ""}`}>
         <span
-          className={`block font-display leading-tight font-semibold whitespace-nowrap ${
-            stack ? "text-2xl sm:text-[1.7rem]" : "text-[1.15rem]"
+          className={`block font-display leading-tight font-semibold ${stack ? "whitespace-nowrap" : "[text-wrap:balance]"} ${
+            stack ? "text-2xl sm:text-[1.7rem]" : "text-[1.08rem]"
           } ${tone === "light" ? "text-white" : "text-forest"}`}
         >
           Pathirana Hardware
