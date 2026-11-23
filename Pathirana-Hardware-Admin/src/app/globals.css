@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+/* Pathirana Hardware brand tokens — identical to the public website
+   (D:\Pathirana-Hardware-Web\src\app\globals.css). Logo red is used sparingly. */
+@theme {
+  --color-forest: #0f5d3a;
+  --color-forest-700: #0a4a2e;
+  --color-forest-800: #083d26;
+  --color-forest-900: #072e1d;
+  --color-forest-100: #e3ede7;
+  --color-forest-50: #f0f5f2;
+  --color-sage: #c9d8cf;
+
+  --color-brass: #b8860b;
+  --color-brass-ink: #7a5a0a;
+  --color-gold-soft: #e8be4f;
+  --color-brass-100: #f3e7c6;
+
+  --color-cream: #f8f6ed;
+  --color-cream-deep: #efebdd;
+  --color-paper: #ffffff;
+  --color-line: #ddd6c3;
+  --color-line-strong: #c8bfa6;
+
+  --color-charcoal: #1f1f1f;
+  --color-ink-muted: #4a4a44;
+
+  /* Logo red: errors and destructive actions only. */
+  --color-logo-red: #c8102e;
+  --color-danger-50: #fbecee;
+
+  --font-display: var(--font-playfair), "Georgia", "Times New Roman", serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px rgb(31 31 31 / 0.04), 0 18px 40px -26px rgb(15 93 58 / 0.35);
+  --shadow-lift: 0 2px 4px rgb(31 31 31 / 0.05), 0 30px 60px -30px rgb(15 93 58 / 0.55);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-charcoal);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brass);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-brass-100);
+  }
+}
+
+/* Native <dialog> backdrop in brand green. */
+dialog.ph-dialog::backdrop {
+  background: rgb(7 46 29 / 0.55);
+  backdrop-filter: blur(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ── Record actions (shared by every module) ─────────────────────────────────
+   Wide screens: right-aligned, evenly spaced, one height. Below 1280 px: an even
+   grid of full-width buttons with ~44 px touch targets — never a cramped row. */
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+}
+.row-actions > * {
+  min-height: 2.25rem;
+}
+@media (max-width: 1279.98px) {
+  .row-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.25rem), 1fr));
+    gap: 0.5rem;
+    width: 100%;
+  }
+  .row-actions > * {
+    min-height: 2.75rem;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── Data tables → cards below 1280 px (class "rtable"; labels come from TableWrap) ── */
+@media (max-width: 1279.98px) {
+  table.rtable {
+    display: block;
+    min-width: 0;
+  }
+  table.rtable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  table.rtable tbody {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+  table.rtable tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.85rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--color-line);
+    border-radius: 1rem;
+    background: #fff;
+  }
+  table.rtable tbody td {
+    display: block;
+    flex: 1 1 100%;
+    padding: 0 !important;
+    text-align: left !important;
+    min-width: 0;
+  }
+  table.rtable tbody td.rtable-media {
+    flex: 0 0 auto;
+    width: auto !important;
+  }
+  table.rtable tbody td.rtable-media + td.rtable-main {
+    flex: 1 1 0;
+  }
+  table.rtable tbody td[data-label]:not(.rtable-media, .rtable-main, .rtable-actions) {
+    flex: 0 1 auto;
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+  }
+  table.rtable tbody td[data-label]:not(.rtable-media, .rtable-main, .rtable-actions)::before {
+    content: attr(data-label) ":";
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+  table.rtable tbody td.rtable-actions {
+    margin-top: 0.4rem;
+    padding-top: 0.75rem !important;
+    border-top: 1px solid var(--color-line);
+  }
+}

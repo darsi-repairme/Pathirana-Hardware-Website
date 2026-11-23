@@ -1,0 +1,23 @@
+# Monorepo safety net (each app also has its own .gitignore).
+node_modules/
+.next/
+.next-*/
+dist/
+dist-*/
+out/
+out-*/
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.npm-cache/
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+**/storage/uploads/
+**/tests/.auth/
+.playwright-mcp/
+.DS_Store
+Thumbs.db

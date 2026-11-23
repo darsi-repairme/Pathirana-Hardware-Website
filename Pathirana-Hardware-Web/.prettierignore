@@ -1,0 +1,15 @@
+.next
+.next-fixtures
+out
+out-fixtures
+out-live
+node_modules
+test-results
+playwright-report
+build-reports
+package-lock.json
+public
+src/content/gallery-manifest.json
+AGENTS.md
+out-*
+.next-*

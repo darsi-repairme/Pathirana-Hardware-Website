@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+storage/
+.env
+.env.*
+!.env.example
+
+# Local TLS certificates (e.g. the Supabase root CA)
+certs/
+dist-cloud/

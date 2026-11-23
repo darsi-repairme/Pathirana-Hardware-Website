@@ -1,0 +1,16 @@
+{
+  "storefront": {
+    "width": 1122,
+    "height": 1402,
+    "variants": [
+      {
+        "width": 640,
+        "src": "/images/gallery/storefront-640.webp"
+      },
+      {
+        "width": 1122,
+        "src": "/images/gallery/storefront-1122.webp"
+      }
+    ]
+  }
+}
