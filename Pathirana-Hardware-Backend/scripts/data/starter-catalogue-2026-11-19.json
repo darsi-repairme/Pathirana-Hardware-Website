@@ -1,0 +1,252 @@
+{
+  "source": "excel-item-report-2026-11-19",
+  "sourceNote": "Shop item report dated 19 November 2026. Prices are the report's Cash Price column in LKR: INITIAL values, subject to owner confirmation. Stock figures in the report were not used.",
+  "translationsNeedReview": true,
+  "categories": [
+    {
+      "slug": "tools",
+      "name": "Tools",
+      "sourceDepartment": "Tools",
+      "sortOrder": 1,
+      "description": "Hand tools such as hammers and screwdrivers.",
+      "translations": {
+        "ta": { "name": "கருவிகள்", "description": "சுத்தியல்கள், திருப்புளிகள் போன்ற கைக் கருவிகள்." },
+        "si": { "name": "මෙවලම්", "description": "මිටි සහ ඉස්කුරුප්පු නියන් වැනි අත් මෙවලම්." }
+      }
+    },
+    {
+      "slug": "pvc-pipes-fittings",
+      "name": "PVC Pipes & Fittings",
+      "sourceDepartment": "Pvc",
+      "sortOrder": 2,
+      "description": "PVC pipes and pipe fittings for water lines and plumbing.",
+      "translations": {
+        "ta": {
+          "name": "PVC குழாய்கள் மற்றும் பொருத்துதல்கள்",
+          "description": "நீர் இணைப்புகள் மற்றும் குழாய் வேலைகளுக்கான PVC குழாய்கள் மற்றும் பொருத்துதல்கள்."
+        },
+        "si": { "name": "PVC බට සහ උපාංග", "description": "ජල මාර්ග සහ නළ කාර්මික වැඩ සඳහා PVC බට සහ බට උපාංග." }
+      }
+    },
+    {
+      "slug": "paints",
+      "name": "Paints",
+      "sourceDepartment": "Paint",
+      "sortOrder": 3,
+      "description": "Paints, including gloss enamel, in different colours and tin sizes.",
+      "translations": {
+        "ta": {
+          "name": "வண்ணப்பூச்சுகள்",
+          "description": "பளபளப்பான எனாமல் உட்பட, பல்வேறு நிறங்களிலும் அளவுகளிலும் வண்ணப்பூச்சுகள்."
+        },
+        "si": { "name": "තීන්ත", "description": "ග්ලොස් එනමල් ඇතුළු, විවිධ වර්ණ සහ ප්‍රමාණවලින් තීන්ත." }
+      }
+    },
+    {
+      "slug": "electrical-items",
+      "name": "Electrical Items",
+      "sourceDepartment": "Electric",
+      "sortOrder": 4,
+      "description": "Lamps, bulbs and switches for homes and buildings.",
+      "translations": {
+        "ta": {
+          "name": "மின் பொருட்கள்",
+          "description": "வீடுகள் மற்றும் கட்டடங்களுக்கான விளக்குகள், மின்குமிழ்கள் மற்றும் சுவிட்சுகள்."
+        },
+        "si": { "name": "විදුලි උපකරණ", "description": "නිවාස සහ ගොඩනැගිලි සඳහා ලාම්පු, බල්බ සහ ස්විච." }
+      }
+    },
+    {
+      "slug": "nails-fasteners",
+      "name": "Nails & Fasteners",
+      "sourceDepartment": "Nails",
+      "sortOrder": 5,
+      "description": "Concrete nails and other nails for building and woodwork.",
+      "translations": {
+        "ta": {
+          "name": "ஆணிகள் மற்றும் இணைப்பான்கள்",
+          "description": "கட்டுமானம் மற்றும் மரவேலைக்கான கான்கிரீட் ஆணிகள் மற்றும் பிற ஆணிகள்."
+        },
+        "si": { "name": "ඇණ සහ සවිකිරීම් උපාංග", "description": "ඉදිකිරීම් සහ ලී වැඩ සඳහා කොන්ක්‍රීට් ඇණ සහ වෙනත් ඇණ." }
+      }
+    }
+  ],
+  "brands": [
+    { "slug": "ultratech", "name": "Ultratech" },
+    { "slug": "s-lon", "name": "S-Lon" },
+    { "slug": "nippon", "name": "Nippon" },
+    { "slug": "orange", "name": "Orange" },
+    { "slug": "philips", "name": "Philips" }
+  ],
+  "products": [
+    {
+      "code": "2187",
+      "rawName": "Hammer sladge 3lbs fibre(green//black)",
+      "name": "3 lb Fibre Handle Sledge Hammer",
+      "slug": "3-lb-fibre-handle-sledge-hammer",
+      "category": "tools",
+      "brand": null,
+      "priceLkr": "895.00",
+      "unit": null,
+      "summary": "Sledge hammer, 3 lb, with a fibre handle (green/black)."
+    },
+    {
+      "code": "5733",
+      "rawName": "Hammer wulf machnist (200g)",
+      "name": "Wulf Machinist Hammer 200 g",
+      "slug": "wulf-machinist-hammer-200-g",
+      "category": "tools",
+      "brand": null,
+      "priceLkr": "470.00",
+      "unit": null,
+      "summary": "Machinist hammer, 200 g."
+    },
+    {
+      "code": "7506",
+      "rawName": "Screw driver",
+      "name": "Screwdriver",
+      "slug": "screwdriver",
+      "category": "tools",
+      "brand": null,
+      "priceLkr": "125.00",
+      "unit": null,
+      "summary": "Screwdriver."
+    },
+    {
+      "code": "1806",
+      "rawName": "32mm pipe (pnt 11) slon",
+      "name": "S-Lon PVC Pipe 32 mm (PNT 11)",
+      "slug": "s-lon-pvc-pipe-32-mm-pnt-11",
+      "category": "pvc-pipes-fittings",
+      "brand": "s-lon",
+      "priceLkr": "1590.00",
+      "unit": null,
+      "summary": "S-Lon PVC pipe, 32 mm, PNT 11."
+    },
+    {
+      "code": "385",
+      "rawName": "40mm pipe (1000t) slon (pnt 11)",
+      "name": "S-Lon PVC Pipe 40 mm (PNT 11)",
+      "slug": "s-lon-pvc-pipe-40-mm-pnt-11",
+      "category": "pvc-pipes-fittings",
+      "brand": "s-lon",
+      "priceLkr": "2350.00",
+      "unit": null,
+      "summary": "S-Lon PVC pipe, 40 mm, PNT 11.",
+      "sourceNote": "The source name also contains \"1000t\" (meaning not confirmed; kept here and in the search terms only)."
+    },
+    {
+      "code": "4061",
+      "rawName": "Cap 90mm (3) slon",
+      "name": "S-Lon PVC End Cap 90 mm",
+      "slug": "s-lon-pvc-end-cap-90-mm",
+      "category": "pvc-pipes-fittings",
+      "brand": "s-lon",
+      "priceLkr": "990.00",
+      "unit": null,
+      "summary": "S-Lon PVC end cap, 90 mm.",
+      "sourceNote": "The source name also contains \"(3)\" (meaning not confirmed)."
+    },
+    {
+      "code": "170(1)",
+      "rawName": "Oxford blue g/e nippon 200ml",
+      "name": "Nippon Oxford Blue Gloss Enamel 200 ml",
+      "slug": "nippon-oxford-blue-gloss-enamel-200-ml",
+      "category": "paints",
+      "brand": "nippon",
+      "priceLkr": "270.00",
+      "unit": null,
+      "summary": "Nippon gloss enamel paint, Oxford Blue, 200 ml."
+    },
+    {
+      "code": "170(2)",
+      "rawName": "Oxford blue g/e nippon 500ml",
+      "name": "Nippon Oxford Blue Gloss Enamel 500 ml",
+      "slug": "nippon-oxford-blue-gloss-enamel-500-ml",
+      "category": "paints",
+      "brand": "nippon",
+      "priceLkr": "535.00",
+      "unit": null,
+      "summary": "Nippon gloss enamel paint, Oxford Blue, 500 ml."
+    },
+    {
+      "code": "102/1",
+      "rawName": "Rich yellow w/p nippon 1l 52",
+      "name": "Nippon Rich Yellow Paint 1 L",
+      "slug": "nippon-rich-yellow-paint-1-l",
+      "category": "paints",
+      "brand": "nippon",
+      "priceLkr": "1490.00",
+      "unit": null,
+      "summary": "Nippon paint, Rich Yellow, 1 L.",
+      "sourceNote": "The source name also contains \"w/p\" and \"52\" (meanings not confirmed)."
+    },
+    {
+      "code": "1249",
+      "rawName": "7 w b22 led lamp philips",
+      "name": "Philips 7 W B22 LED Lamp",
+      "slug": "philips-7-w-b22-led-lamp",
+      "category": "electrical-items",
+      "brand": "philips",
+      "priceLkr": "695.00",
+      "unit": null,
+      "summary": "Philips LED lamp, 7 W, B22 base."
+    },
+    {
+      "code": "940",
+      "rawName": "5 w cfl orange",
+      "name": "Orange 5 W CFL Bulb",
+      "slug": "orange-5-w-cfl-bulb",
+      "category": "electrical-items",
+      "brand": "orange",
+      "priceLkr": "305.00",
+      "unit": null,
+      "summary": "Orange CFL bulb, 5 W."
+    },
+    {
+      "code": "3217",
+      "rawName": "4 gang 2 way (orange)",
+      "name": "Orange 4-Gang 2-Way Switch",
+      "slug": "orange-4-gang-2-way-switch",
+      "category": "electrical-items",
+      "brand": "orange",
+      "priceLkr": "2300.00",
+      "unit": null,
+      "summary": "Orange 4-gang 2-way switch."
+    },
+    {
+      "code": "3149",
+      "rawName": "Concrete nail 2.5 box",
+      "name": "Concrete Nails 2.5 — Box",
+      "slug": "concrete-nails-2-5-box",
+      "category": "nails-fasteners",
+      "brand": null,
+      "priceLkr": "1300.00",
+      "unit": "box",
+      "summary": "Concrete nails, size 2.5, sold by the box."
+    },
+    {
+      "code": "4465",
+      "rawName": "Taper nail 12mm// 1",
+      "name": "Taper Nail 12 mm",
+      "slug": "taper-nail-12-mm",
+      "category": "nails-fasteners",
+      "brand": null,
+      "priceLkr": "15.00",
+      "unit": null,
+      "summary": "Taper nail, 12 mm.",
+      "sourceNote": "The source name ends with \"// 1\" (meaning not confirmed)."
+    },
+    {
+      "code": "7340",
+      "rawName": "Nail sunbox 1 1//2",
+      "name": "Sunbox Nail 1½",
+      "slug": "sunbox-nail-1-1-2",
+      "category": "nails-fasteners",
+      "brand": null,
+      "priceLkr": "10.00",
+      "unit": null,
+      "summary": "Sunbox nail, 1½."
+    }
+  ]
+}

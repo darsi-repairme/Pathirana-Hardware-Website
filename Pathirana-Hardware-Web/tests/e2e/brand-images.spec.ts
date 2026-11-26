@@ -26,7 +26,7 @@ test.describe("Brand images", () => {
       /pathirana-hero-helmet-banner-\d+\.webp$/,
     );
     expect(await loadedSrc(page, "section[aria-labelledby='about-preview-title'] img")).toMatch(
-      /pathirana_hardware_storefront-\d+\.webp$/,
+      /pathirana_hardware_storefront-display-\d+\.webp$/,
     );
     await expect(page.getByRole("link", { name: "Learn More", exact: true })).toHaveAttribute("href", "/about/");
   });
@@ -43,19 +43,31 @@ test.describe("Brand images", () => {
     await expect(page.locator("section[aria-labelledby='products-title'] img")).toHaveCount(7);
   });
 
+  // Audit PERF-03: full-size originals are not deployed (pages use images/opt/); gallery photos stay.
+  test("unused image originals are left out of the build; optimised copies and gallery photos remain", async ({
+    request,
+  }) => {
+    for (const original of ["pathirana-shop-about.png", "pathirana-hero-helmet-banner.png", "pathirana-logo.png"]) {
+      expect((await request.get(`/images/${original}`)).status(), original).toBe(404);
+    }
+    for (const kept of ["/images/opt/pathirana-hero-helmet-banner-1920.webp", "/images/gallery/storefront-640.webp"]) {
+      expect((await request.get(kept)).status(), kept).toBe(200);
+    }
+  });
+
   test("About page shows the storefront photo", async ({ page }) => {
     await page.goto("/about/");
     // The section's first <img> is the blurred heading-band background; select the storefront photo itself.
     expect(
-      await loadedSrc(page, "section[aria-labelledby='our-story'] img[alt^='Pathirana Hardware storefront']"),
-    ).toMatch(/pathirana-shop-about-\d+\.webp$/);
+      await loadedSrc(page, "section[aria-labelledby='about-title'] img[alt^='Pathirana Hardware storefront']"),
+    ).toMatch(/pathirana-shop-about-display-\d+\.webp$/);
   });
 
   test("hero banner is served at full resolution on high-density desktop screens", async ({ browser, isMobile }) => {
     test.skip(isMobile, "desktop only");
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
     const page = await context.newPage();
-    await page.goto("http://127.0.0.1:4173/");
+    await page.goto(`http://127.0.0.1:${process.env.E2E_WEB_PORT || 4173}/`);
     // 1920 slot = the original 1672 px banner (never upscaled).
     expect(await loadedSrc(page, "section[aria-labelledby='hero-title'] img")).toMatch(
       /pathirana-hero-helmet-banner-1920\.webp$/,
@@ -65,6 +77,10 @@ test.describe("Brand images", () => {
 });
 
 test.describe("Three.js visuals", () => {
+  // Seven WebGL canvases (software-rendered in headless Chromium): under parallel load, closing the
+  // page could exceed the default 30 s. Longer budget (the page is released in fixtures.ts).
+  test.describe.configure({ timeout: 60_000 });
+
   test("services and location canvases render (or keep their fallback) without errors", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));

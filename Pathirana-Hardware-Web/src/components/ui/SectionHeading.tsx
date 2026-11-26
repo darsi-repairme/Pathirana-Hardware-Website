@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
+import { tx } from "@/i18n/tx";
 
 type Props = {
   /** Small label above the heading, e.g. "About". */
-  eyebrow: string;
+  eyebrow: ReactNode;
   title: ReactNode;
   intro?: ReactNode;
   as?: "h1" | "h2";
@@ -30,7 +31,7 @@ export function Eyebrow({
       }`}
     >
       <span aria-hidden="true" className={`h-px w-8 ${line}`} />
-      <span>{children}</span>
+      <span>{tx(children)}</span>
       {align === "center" ? <span aria-hidden="true" className={`h-px w-8 ${line}`} /> : null}
     </p>
   );
@@ -58,7 +59,7 @@ export function SectionHeading({
           tone === "dark" ? "text-white" : "text-charcoal"
         }`}
       >
-        {title}
+        {tx(title)}
       </Heading>
       {intro ? (
         <div
@@ -66,7 +67,7 @@ export function SectionHeading({
             tone === "dark" ? "text-sage" : "text-ink-muted"
           }`}
         >
-          {intro}
+          {tx(intro)}
         </div>
       ) : null}
     </div>

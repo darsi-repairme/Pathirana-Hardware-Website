@@ -7,6 +7,15 @@ import { defineConfig, devices } from "@playwright/test";
  *   npm run test:e2e:build   # builds ./out and ./out-fixtures
  *   npm run test:e2e
  */
+/**
+ * Ports and folders can be overridden (e.g. to test a fresh build while a preview keeps
+ * serving ./out on 4173): E2E_WEB_PORT / E2E_WEB_DIR and E2E_FIXTURES_PORT / E2E_FIXTURES_DIR.
+ */
+const WEB_PORT = process.env.E2E_WEB_PORT || "4173";
+const FIXTURES_PORT = process.env.E2E_FIXTURES_PORT || "4174";
+const WEB_DIR = process.env.E2E_WEB_DIR || "out";
+const FIXTURES_DIR = process.env.E2E_FIXTURES_DIR || "out-fixtures";
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -17,7 +26,7 @@ export default defineConfig({
   workers: 2,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: `http://127.0.0.1:${WEB_PORT}`,
     trace: "retain-on-failure",
   },
   projects: [
@@ -26,13 +35,13 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "node scripts/serve-static.mjs out 4173",
-      url: "http://127.0.0.1:4173/",
+      command: `node scripts/serve-static.mjs ${WEB_DIR} ${WEB_PORT}`,
+      url: `http://127.0.0.1:${WEB_PORT}/`,
       reuseExistingServer: !process.env.CI,
     },
     {
-      command: "node scripts/serve-static.mjs out-fixtures 4174",
-      url: "http://127.0.0.1:4174/",
+      command: `node scripts/serve-static.mjs ${FIXTURES_DIR} ${FIXTURES_PORT}`,
+      url: `http://127.0.0.1:${FIXTURES_PORT}/`,
       reuseExistingServer: !process.env.CI,
     },
   ],

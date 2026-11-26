@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
-import { Breadcrumbs } from "./Breadcrumbs";
+import { tx } from "@/i18n/tx";
+import { Breadcrumbs, type Crumb } from "./Breadcrumbs";
 import { Container } from "./Container";
 
 type SiteImage = { src: string; alt: string; width: number; height: number };
@@ -16,6 +17,7 @@ export function BlurredTopBand({
   image,
   position = "object-center",
   crumb,
+  parents,
   title,
   intro,
 }: {
@@ -25,6 +27,8 @@ export function BlurredTopBand({
   /** object-position utility, e.g. "object-[50%_30%]". */
   position?: string;
   crumb: string;
+  /** Breadcrumb levels between Home and this page. */
+  parents?: readonly Crumb[];
   title: ReactNode;
   intro?: ReactNode;
 }) {
@@ -49,12 +53,12 @@ export function BlurredTopBand({
       />
       <Container size="wide" className="py-12 text-center sm:py-14 lg:py-16">
         <div className="hero-enter mx-auto max-w-2xl">
-          <Breadcrumbs current={crumb} className="flex justify-center [&_ol]:justify-center" />
+          <Breadcrumbs current={crumb} parents={parents} className="flex justify-center [&_ol]:justify-center" />
           <h1
             id={id}
             className="mt-5 font-display text-[clamp(2.1rem,7vw,3.4rem)] leading-tight font-semibold text-cream"
           >
-            {title}
+            {tx(title)}
           </h1>
           <span
             aria-hidden="true"
@@ -62,7 +66,7 @@ export function BlurredTopBand({
           />
           {intro ? (
             <div className="mx-auto mt-4 max-w-xl text-[clamp(1rem,2.6vw,1.15rem)] leading-relaxed text-sage">
-              {intro}
+              {tx(intro)}
             </div>
           ) : null}
         </div>

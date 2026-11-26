@@ -4,6 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { Alert, Button, Field, Input } from "@/components/ui";
+import { email as emailRule, useValidation, type Rules } from "@/lib/useValidation";
+
+type Creds = { email: string; password: string };
+const RULES: Rules<Creds> = {
+  email: emailRule,
+  password: (v) => (String(v ?? "") ? null : "Enter your password."),
+};
 
 export function LoginForm({ next, notice }: { next: string; notice: string | null }) {
   const router = useRouter();
@@ -12,16 +19,12 @@ export function LoginForm({ next, notice }: { next: string; notice: string | nul
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const v = useValidation<Creds>({ email, password }, RULES);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const fe: typeof fieldErrors = {};
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) fe.email = "Enter a valid email address.";
-    if (!password) fe.password = "Enter your password.";
-    setFieldErrors(fe);
     setError(null);
-    if (fe.email || fe.password) return;
+    if (!v.validateAll()) return;
 
     setBusy(true);
     try {
@@ -49,7 +52,7 @@ export function LoginForm({ next, notice }: { next: string; notice: string | nul
     <form onSubmit={submit} noValidate className="mt-8 space-y-4">
       {notice && !error ? <Alert tone="info">{notice}</Alert> : null}
       {error ? <Alert>{error}</Alert> : null}
-      <Field label="Email" error={fieldErrors.email}>
+      <Field label="Email" required error={v.error("email")}>
         {(p) => (
           <Input
             {...p}
@@ -58,11 +61,12 @@ export function LoginForm({ next, notice }: { next: string; notice: string | nul
             inputMode="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={v.blur("email")}
             autoFocus
           />
         )}
       </Field>
-      <Field label="Password" error={fieldErrors.password}>
+      <Field label="Password" required error={v.error("password")}>
         {(p) => (
           <div className="relative">
             <Input
@@ -71,6 +75,7 @@ export function LoginForm({ next, notice }: { next: string; notice: string | nul
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onBlur={v.blur("password")}
               className="pr-12"
             />
             <button

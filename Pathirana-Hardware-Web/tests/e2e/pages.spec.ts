@@ -2,6 +2,10 @@ import { expect, test } from "./fixtures";
 import { PAGES, expectNoBrokenImages, trackErrors } from "./helpers";
 
 test.describe("All pages", () => {
+  // Several pages run WebGL scenes (software-rendered in headless Chromium); under parallel load,
+  // loading and closing such a page can take longer than the default 30 s (released in fixtures.ts).
+  test.describe.configure({ timeout: 60_000 });
+
   for (const { path, h1 } of PAGES) {
     test(`${path} loads with one h1, metadata, logo and no errors`, async ({ page }) => {
       const errors = trackErrors(page);

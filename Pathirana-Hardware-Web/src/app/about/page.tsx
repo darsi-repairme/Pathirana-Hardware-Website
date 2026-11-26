@@ -7,14 +7,15 @@ import { BlurredTopBand } from "@/components/ui/BlurredTopBand";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { ShopPhoto } from "@/components/about/ShopPhoto";
-import { LocationArt } from "@/components/about/LocationArt";
+import { DirectionsArt } from "@/components/about/DirectionsArt";
 import { CategoryRowList } from "@/components/products/CategoryLinks";
 import { ConstructionSkyline } from "@/components/home/ConstructionSkyline";
+import { T, TRegion, TRich } from "@/i18n/I18nProvider";
 
 export const metadata: Metadata = {
   ...createPageMetadata({
     title: "About Us",
-    description: `${business.legalName} has supplied hardware and building materials from Pallama Road, Bangadeniya, Sri Lanka, since ${business.foundedDate}. Learn about the business, our products and our services.`,
+    description: `${business.shortName} has supplied hardware and building materials from Pallama Road, Bangadeniya, Sri Lanka, since ${business.foundedDate}. Learn about the business, our products and our services.`,
     path: "/about/",
   }),
 };
@@ -34,31 +35,66 @@ export default function AboutPage() {
   return (
     <>
       {/* Our Story — text · shop photo · Since 1997 */}
-      <section aria-labelledby="our-story">
+      <section aria-labelledby="about-title">
         <BlurredTopBand
-          id="our-story"
+          id="about-title"
           image={images.heroMaterials}
           position="object-[50%_55%]"
           crumb="About Us"
-          title="Our Story"
-          intro={<p>A trusted hardware partner for building and construction needs since 1997.</p>}
+          title="About Us"
+          intro={
+            <p>
+              <T>A trusted hardware partner for building and construction needs since 1997.</T>
+            </p>
+          }
         />
         <div className="bg-cream pt-12 pb-16 lg:pt-16 lg:pb-24">
           <Container size="wide">
             <div className="grid items-center gap-x-10 gap-y-14 md:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.95fr)_minmax(0,0.9fr)] xl:gap-x-14">
               <div className="reveal">
+                <h2
+                  id="our-story"
+                  className="font-display text-[clamp(1.75rem,5vw,2.25rem)] leading-tight font-semibold text-forest"
+                >
+                  <T>Our Story</T>
+                </h2>
+                <span
+                  aria-hidden="true"
+                  className="mt-3 mb-5 block h-0.5 w-14 bg-gradient-to-r from-brass to-gold-soft"
+                />
                 <div className="space-y-4 text-justify text-[1.05rem] leading-relaxed hyphens-auto text-ink-muted">
                   <p>
-                    {business.shortName} was established on {business.foundedDate} on {business.address.street},{" "}
-                    {business.address.locality}. The business supplies hardware and building materials for homes,
-                    renovations and construction projects.
+                    <T
+                      vars={{
+                        name: business.shortName,
+                        date: business.foundedDate,
+                        street: business.address.street,
+                        locality: business.address.locality,
+                      }}
+                    >
+                      {
+                        "{name} was established on {date} on {street}, {locality}. The business supplies hardware and building materials for homes, renovations and construction projects."
+                      }
+                    </T>
                   </p>
                   <p>
-                    The store is led by owner {business.owner}. Visit us, or call or WhatsApp{" "}
-                    <a href={telHref} className="font-semibold whitespace-nowrap text-forest hover:text-brass-ink">
-                      {business.phone.display}
-                    </a>{" "}
-                    to ask about products, prices and availability.
+                    <TRich
+                      vars={{ owner: business.owner }}
+                      nodes={{
+                        phone: (
+                          <a
+                            href={telHref}
+                            className="font-semibold whitespace-nowrap text-forest hover:text-brass-ink"
+                          >
+                            {business.phone.display}
+                          </a>
+                        ),
+                      }}
+                    >
+                      {
+                        "The store is led by owner {owner}. Visit us, or call or WhatsApp {phone} to ask about products, prices and availability."
+                      }
+                    </TRich>
                   </p>
                 </div>
               </div>
@@ -74,7 +110,9 @@ export default function AboutPage() {
                   className="absolute -top-24 -right-20 -z-10 size-72 rounded-full bg-[radial-gradient(circle,rgb(232_190_79/0.2),transparent_65%)]"
                 />
                 <h2 className="text-center lg:text-left">
-                  <span className="block text-xs font-semibold tracking-[0.32em] text-gold-soft uppercase">Since</span>
+                  <span className="block text-xs font-semibold tracking-[0.32em] text-gold-soft uppercase">
+                    <T>Since</T>
+                  </span>
                   <span className="mt-1 block bg-gradient-to-r from-gold-soft to-brass bg-clip-text font-display text-[4.25rem] leading-none font-semibold text-transparent">
                     1997
                   </span>
@@ -97,9 +135,11 @@ export default function AboutPage() {
                           strokeWidth={1.4}
                           className="absolute top-4 left-0 mt-0.5 size-6 text-gold-soft"
                         />
-                        {label}
+                        <T>{label}</T>
                       </dt>
-                      <dd className="mt-0.5 font-semibold text-white">{value}</dd>
+                      <dd className="mt-0.5 font-semibold text-white">
+                        <T>{value}</T>
+                      </dd>
                     </div>
                   ))}
                 </dl>
@@ -110,7 +150,7 @@ export default function AboutPage() {
       </section>
 
       {/* The official tagline */}
-      <section aria-label="Our tagline" className="bg-cream-deep/60 py-16 lg:py-20">
+      <TRegion as="section" label="Our tagline" className="bg-cream-deep/60 py-16 lg:py-20">
         <Container>
           <figure className="reveal mx-auto max-w-3xl text-center">
             <span
@@ -120,20 +160,26 @@ export default function AboutPage() {
               &ldquo;
             </span>
             <div className="mt-2 flex items-center justify-center gap-4 sm:gap-6">
-              <span aria-hidden="true" className="h-px w-10 bg-gradient-to-r from-transparent to-brass sm:w-20" />
-              <blockquote>
-                <p className="font-display text-[clamp(1.8rem,6vw,3.1rem)] leading-tight font-semibold text-forest italic">
-                  {business.tagline}
+              <span
+                aria-hidden="true"
+                className="h-px w-6 shrink-0 bg-gradient-to-r from-transparent to-brass min-[400px]:w-10 sm:w-20"
+              />
+              <blockquote className="min-w-0">
+                <p className="font-display text-[clamp(1.5rem,6vw,3.1rem)] leading-tight font-semibold text-forest italic">
+                  <T>{business.tagline}</T>
                 </p>
               </blockquote>
-              <span aria-hidden="true" className="h-px w-10 bg-gradient-to-l from-transparent to-brass sm:w-20" />
+              <span
+                aria-hidden="true"
+                className="h-px w-6 shrink-0 bg-gradient-to-l from-transparent to-brass min-[400px]:w-10 sm:w-20"
+              />
             </div>
             <figcaption className="mt-5 text-sm font-semibold tracking-[0.2em] text-brass-ink uppercase">
               {business.shortName}
             </figcaption>
           </figure>
         </Container>
-      </section>
+      </TRegion>
 
       {/* Product categories — two-column rows (icon · name · arrow · hairline). */}
       <section aria-labelledby="about-categories" className="bg-cream py-16 lg:py-20">
@@ -145,9 +191,11 @@ export default function AboutPage() {
                 id="about-categories"
                 className="mt-4 font-display text-[clamp(1.75rem,5vw,2.4rem)] leading-tight font-semibold text-forest"
               >
-                Our Product Categories
+                <T>Our Product Categories</T>
               </h2>
-              <p className="mt-3 text-ink-muted">Hardware and building materials for homes and projects.</p>
+              <p className="mt-3 text-ink-muted">
+                <T>Hardware and building materials for homes and projects.</T>
+              </p>
               <div className="mt-6">
                 <Button href="/products/" variant="outline" arrow="right">
                   View all products
@@ -159,7 +207,8 @@ export default function AboutPage() {
         </Container>
       </section>
 
-      {/* Our Location — dark-green band with a location illustration and gold skyline. */}
+      {/* Our Location — dark-green band with a "find our store" directions illustration (its own
+          artwork, not the Home page's delivery truck) and the gold skyline. */}
       <section
         id="where-we-are"
         aria-labelledby="where-we-are-title"
@@ -169,19 +218,19 @@ export default function AboutPage() {
           aria-hidden="true"
           className="absolute top-0 right-[-12%] -z-10 size-[min(44rem,110vw)] rounded-full bg-[radial-gradient(circle,rgb(232_190_79/0.12),transparent_62%)]"
         />
-        <ConstructionSkyline className="skyline-fade absolute inset-x-0 bottom-0 -z-10 h-24 w-full text-gold-soft/35 sm:h-28 lg:aspect-[1440/150] lg:h-auto lg:text-gold-soft/45" />
+        <ConstructionSkyline className="skyline-fade absolute inset-x-0 bottom-0 -z-10 aspect-[1440/150] h-auto w-full text-gold-soft/35 lg:text-gold-soft/45" />
         <Container size="wide">
           <div className="grid items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:gap-14">
             <div className="reveal">
               <span aria-hidden="true" className="block h-0.5 w-12 bg-gold-soft" />
               <h2 id="where-we-are-title" className="mt-4 font-display text-[clamp(1.9rem,5vw,2.6rem)] font-semibold">
-                Our Location
+                <T>Our Location</T>
               </h2>
               <address className="mt-5 flex items-start gap-3 text-lg leading-relaxed text-sage not-italic">
                 <MapPin aria-hidden="true" className="mt-1 size-5 shrink-0 text-gold-soft" />
                 <span>
                   <span className="block font-semibold text-white">{business.shortName}</span>
-                  {business.address.street}, {business.address.locality}, {business.address.country}
+                  <T>{`${business.address.street}, ${business.address.locality}, ${business.address.country}`}</T>
                 </span>
               </address>
               <p className="mt-3 flex items-center gap-3 text-lg text-sage">
@@ -196,7 +245,9 @@ export default function AboutPage() {
                 </Button>
               </div>
             </div>
-            <LocationArt className="reveal mx-auto h-auto w-full max-w-[22rem] lg:max-w-[26rem]" />
+            <div className="reveal mx-auto w-full max-w-[24rem] lg:max-w-[28rem]">
+              <DirectionsArt label={business.shortName} />
+            </div>
           </div>
         </Container>
       </section>

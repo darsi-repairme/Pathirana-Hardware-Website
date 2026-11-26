@@ -1,6 +1,5 @@
 import { Phone } from "lucide-react";
-import { business, whatsappChatHref, telHref } from "@/content/business";
-import { WhatsAppOutlineIcon } from "@/components/ui/WhatsAppIcon";
+import { business, telHref } from "@/content/business";
 import { Container } from "@/components/ui/Container";
 import { Logo } from "@/components/ui/Logo";
 import { SiteLink } from "@/components/ui/SiteLink";
@@ -8,12 +7,14 @@ import { NavLinks } from "./NavLinks";
 import { MobileMenu } from "./MobileMenu";
 import { HeaderSearch } from "./HeaderSearch";
 import { MobileSearch } from "./MobileSearch";
+import { OffersMenu } from "./OffersMenu";
+import { T, TRegion } from "@/i18n/I18nProvider";
+import { LanguageSwitcher } from "@/i18n/LanguageSwitcher";
 
 /**
- * Header (first visible section): logo + name · main navigation · product
- * search, WhatsApp and call icons. Below xl the search collapses to an
- * icon; below lg the navigation, WhatsApp and call actions move into the
- * menu drawer (phones/tablets: logo + name · search · menu).
+ * Header (first visible section): logo + name · main navigation · product search, Offers,
+ * language and Call. Below xl the search collapses to an icon; below lg the navigation, the
+ * language choice and Call move into the menu drawer (phones/tablets: logo · search · offers · menu).
  */
 export function SiteHeader() {
   return (
@@ -24,35 +25,38 @@ export function SiteHeader() {
           className="flex min-h-11 min-w-0 shrink items-center gap-2 rounded-lg min-[360px]:gap-2.5 sm:gap-3"
         >
           <Logo tone="mark" className="h-9 shrink-0 sm:h-11" preload alt="" sizes="64px" />
-          {/* Full two-line brand at every width (name + gold "(Pvt) Ltd."). */}
-          <span className="min-w-0 leading-tight">
-            <span className="block font-display text-[clamp(1rem,4.9vw,1.2rem)] font-semibold whitespace-nowrap text-white sm:text-[1.35rem]">
-              Pathirana Hardware
-            </span>
-            <span className="block text-[0.6rem] font-semibold tracking-[0.16em] text-gold-soft uppercase sm:text-[0.66rem] sm:tracking-[0.2em]">
-              (Pvt) Ltd.
+          {/* Customer-facing brand name (the legal suffix is kept only in internal records). */}
+          {/* Phones / tablets: two short lines beside the four header buttons; below 360 px the logo
+              alone is shown (the name stays for screen readers). One line from md. */}
+          <span className="min-w-0 max-[359px]:sr-only" data-brand-name>
+            <span className="block font-display text-[1rem] leading-[1.08] font-semibold whitespace-nowrap text-white min-[400px]:text-[1.08rem] md:text-[1.35rem] md:leading-tight">
+              <span className="block md:inline">Pathirana</span> <span className="block md:inline">Hardware</span>
             </span>
           </span>
         </SiteLink>
 
-        <nav aria-label="Main" className="hidden lg:block">
+        <TRegion as="nav" label="Main" className="hidden lg:block">
           <NavLinks />
-        </nav>
+        </TRegion>
 
-        <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
-          <HeaderSearch className="hidden w-56 xl:block 2xl:w-64" />
-          <div className="xl:hidden">
+        {/* Search → Offers → Language → Call (desktop). Phones / tablets: Search · Offers · Menu, with
+            the language choice and Call inside the menu. WhatsApp lives in the enquiry actions. */}
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2" data-header-actions>
+          <HeaderSearch className="header-search-full hidden w-56 xl:block 2xl:w-64" />
+          <div className="header-search-icon xl:hidden">
             <MobileSearch />
           </div>
-          {/* Below lg WhatsApp and Call live in the menu drawer instead. */}
-          <a href={whatsappChatHref} target="_blank" rel="noopener noreferrer" className="header-action max-lg:hidden">
-            <WhatsAppOutlineIcon />
-            <span className="sr-only">Chat on WhatsApp {business.phone.display} (opens in a new tab)</span>
-          </a>
-          <a href={telHref} className="header-action max-lg:hidden">
-            <Phone aria-hidden="true" />
-            <span className="sr-only">Call {business.phone.display}</span>
-          </a>
+          <OffersMenu />
+          <LanguageSwitcher className="hidden lg:block" />
+          {/* Call: desktop only; phones / tablets reach it inside the menu (keeps the bar uncrowded). */}
+          <div className="hidden lg:block">
+            <a href={telHref} className="header-action" data-header-call>
+              <Phone aria-hidden="true" />
+              <span className="sr-only">
+                <T vars={{ phone: business.phone.display }}>{"Call {phone}"}</T>
+              </span>
+            </a>
+          </div>
           <div className="lg:hidden">
             <MobileMenu />
           </div>

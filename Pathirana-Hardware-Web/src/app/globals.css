@@ -136,6 +136,79 @@
     text-wrap: pretty;
   }
 
+  /* Long words never widen the page: Tamil / Sinhala words (and long English ones at heading
+     sizes) wrap inside their box when a whole word cannot fit. Breaks only where needed —
+     never "break-all" — so normal words keep wrapping at spaces. */
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  li,
+  dt,
+  dd,
+  figcaption,
+  summary,
+  label,
+  blockquote {
+    overflow-wrap: break-word;
+  }
+
+  /* Grid children may shrink below their longest word (the default "min-width: auto" let a
+     single long Tamil heading make a one-column grid wider than the phone). Text inside then
+     wraps instead of pushing the page sideways. Any Tailwind min-w-* utility still wins. */
+  .grid > * {
+    min-width: 0;
+  }
+  /* Fieldsets default to "min-width: min-content", so a long Tamil legend or row widened the
+     quotation form beyond a 320px phone. */
+  fieldset {
+    min-width: 0;
+  }
+
+  /* Descriptive paragraphs are justified (client request). Centred or right-aligned text keeps
+     its alignment, and the last line of each paragraph is never stretched. English may
+     hyphenate long words; Tamil / Sinhala never are. On very narrow columns justification
+     leaves wide gaps between long words, so it starts at 400px (English) / 480px (Tamil,
+     Sinhala); narrower screens keep natural left alignment. */
+  @media (min-width: 400px) {
+    :root:not([lang^="ta"], [lang^="si"])
+      main
+      p:not(
+        [class*="text-center"],
+        [class*="text-center"] *,
+        [class*="text-right"],
+        [class*="text-right"] *,
+        [class*="text-end"],
+        [class*="text-end"] *,
+        [class*="whitespace-nowrap"],
+        [class*="truncate"]
+      ) {
+      text-align: justify;
+      text-justify: inter-word;
+      text-align-last: start;
+      hyphens: auto;
+    }
+  }
+  @media (min-width: 480px) {
+    :root:is([lang^="ta"], [lang^="si"])
+      main
+      p:not(
+        [class*="text-center"],
+        [class*="text-center"] *,
+        [class*="text-right"],
+        [class*="text-right"] *,
+        [class*="text-end"],
+        [class*="text-end"] *,
+        [class*="whitespace-nowrap"],
+        [class*="truncate"]
+      ) {
+      text-align: justify;
+      text-justify: inter-word;
+      text-align-last: start;
+    }
+  }
+
   ::selection {
     background: var(--color-forest);
     color: #fff;
@@ -198,6 +271,74 @@
     outline: 3px solid var(--color-gold-soft);
     outline-offset: 3px;
     border-radius: 9999px;
+  }
+  /* Text-style contact actions (Call · WhatsApp · Try again) shown side by side: identical
+     height, centred icon + text on one line, same weight and line height — so neighbours align. */
+  .contact-action {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .contact-action > svg {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+  }
+  .contact-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    column-gap: 1.5rem;
+    row-gap: 0.25rem;
+    max-width: 100%;
+  }
+  /* Narrow phones: a long translated label (e.g. Tamil "Call …") may wrap inside the screen
+     instead of pushing the page sideways. */
+  @media (max-width: 479.98px) {
+    .contact-actions > .contact-action {
+      max-width: 100%;
+      white-space: normal;
+      text-align: center;
+      overflow-wrap: break-word;
+    }
+  }
+
+  /* Offers: same circle as Call, with a brass-gold ring and a small red "Offers" badge. */
+  .header-action.header-offers {
+    border: 2px solid var(--color-gold-soft);
+    box-shadow:
+      0 0 0 1px rgb(232 190 79 / 0.2),
+      0 0 12px rgb(232 190 79 / 0.18);
+    color: #fff;
+  }
+  .header-action.header-offers:hover,
+  .header-action.header-offers[aria-expanded="true"] {
+    color: var(--color-gold-soft);
+    border-color: var(--color-gold-soft);
+  }
+  .header-offers-badge {
+    position: absolute;
+    top: -0.55rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0 0.4rem;
+    border-radius: 9999px;
+    background: var(--color-logo-red);
+    color: #fff;
+    font-size: 0.58rem;
+    font-weight: 700;
+    line-height: 0.95rem;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    box-shadow: 0 0 0 2px var(--color-forest-900);
+    pointer-events: none;
   }
   @media (prefers-reduced-motion: reduce) {
     :is(.header-action, .icon-action) {
@@ -388,9 +529,9 @@
 .hero-mask {
   display: inline-block;
   overflow: hidden;
-  /* Room for descenders inside the mask. */
-  padding-bottom: 0.08em;
-  margin-bottom: -0.08em;
+  /* Room for descenders inside the mask (0.08em cut the tail of "g" by ~3px at desktop size). */
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
   vertical-align: bottom;
 }
 .hero-mask > span {
@@ -631,7 +772,6 @@ html:has(dialog[open]) {
    HOMEPAGE — shared one-time scroll reveals (<InView className="reveal-group">)
    .rv        fades / rises in      .rv-line  gold rule draws
    .rv-img    image wipes in        .d1–.d6   stagger delays
-   Swooshes (.swoosh-draw path) draw once.
    ────────────────────────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: no-preference) {
   .reveal-group .rv,
@@ -675,14 +815,6 @@ html:has(dialog[open]) {
   }
   .reveal-group .d6 {
     transition-delay: 0.58s;
-  }
-
-  .swoosh-draw .swoosh-lines {
-    clip-path: inset(-10px 0 -10px 0);
-    transition: clip-path 1.8s var(--ease-out-soft);
-  }
-  .swoosh-draw[data-inview="pending"] .swoosh-lines {
-    clip-path: inset(-10px 100% -10px 0);
   }
 
   /* Hero swoosh sweeps in on load. */
@@ -983,36 +1115,20 @@ html.intro-seen .site-intro {
   height: var(--card-h);
   margin-left: calc(var(--card-w) / -2);
   transform-style: preserve-3d;
-  transform: translateZ(calc(var(--r) * -1)) rotateY(calc(var(--turn, 0) * -60deg));
+  transform: translateZ(calc(var(--r) * -1)) rotateY(calc(var(--turn, 0) * var(--step, 60deg) * -1));
   transition: transform 1s var(--ease-out-soft);
 }
 .services-ring-card {
   position: absolute;
   inset: 0;
   backface-visibility: hidden;
-  transform: rotateY(calc(var(--i) * 60deg)) translateZ(var(--r));
+  transform: rotateY(calc(var(--i) * var(--step, 60deg))) translateZ(var(--r));
   transition: opacity 0.7s ease;
 }
-.services-ring-card:nth-child(1) {
-  --i: 0;
-}
-.services-ring-card:nth-child(2) {
-  --i: 1;
-}
-.services-ring-card:nth-child(3) {
-  --i: 2;
-}
-.services-ring-card:nth-child(4) {
-  --i: 3;
-}
-.services-ring-card:nth-child(5) {
-  --i: 4;
-}
-.services-ring-card:nth-child(6) {
-  --i: 5;
-}
+/* Neighbours stay visibly dimmed, but their text keeps WCAG AA contrast on every screen size
+   (desktop needs ≥ 0.75; on phones the card overlaps a lighter background and needs ≥ 0.9). */
 .services-ring-card[data-dist="1"] {
-  opacity: 0.45;
+  opacity: 0.9;
 }
 .services-ring-card[data-dist="2"],
 .services-ring-card[data-dist="3"] {
@@ -1106,7 +1222,7 @@ html.intro-seen .site-intro {
   margin: 0;
   padding: 0;
   list-style: none;
-  transform: rotate(calc(var(--turn, 0) * -60deg));
+  transform: rotate(calc(var(--turn, 0) * var(--step, 60deg) * -1));
   transition: transform 1s var(--ease-out-soft);
 }
 .services-orbit-node {
@@ -1116,8 +1232,9 @@ html.intro-seen .site-intro {
   width: var(--node);
   height: var(--node);
   margin: calc(var(--node) / -2) 0 0 calc(var(--node) / -2);
-  transform: rotate(calc(var(--i) * 60deg)) translateY(calc(var(--size) / -2))
-    rotate(calc(var(--i) * -60deg + var(--turn, 0) * 60deg));
+  /* --step: 360° / number of published services (60° for the approved six). */
+  transform: rotate(calc(var(--i) * var(--step, 60deg))) translateY(calc(var(--size) / -2))
+    rotate(calc((var(--turn, 0) - var(--i)) * var(--step, 60deg)));
   transition: transform 1s var(--ease-out-soft);
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1309,4 +1426,186 @@ html.intro-seen .site-intro {
   .brand-row > li:nth-child(n + 3)::after {
     display: none;
   }
+}
+
+/* ── Tamil (ta) and Sinhala (si) ──────────────────────────────────────────────
+   Latin text keeps Inter / Playfair; Tamil and Sinhala glyphs fall through to
+   the self-hosted Noto families. Letter-spacing breaks Indic letter shaping, and
+   these scripts need taller lines, so both are adjusted per language. */
+html:is([lang^="ta"], [lang^="si"]) {
+  --font-sans:
+    var(--font-inter), var(--font-noto-tamil), var(--font-noto-sinhala), ui-sans-serif, system-ui, "Segoe UI", Roboto,
+    Arial, sans-serif;
+  --font-display:
+    var(--font-playfair), var(--font-noto-serif-tamil), var(--font-noto-serif-sinhala), var(--font-noto-tamil),
+    var(--font-noto-sinhala), "Georgia", serif;
+}
+html:is([lang^="ta"], [lang^="si"]) body {
+  line-height: 1.65;
+  overflow-wrap: break-word;
+}
+html:is([lang^="ta"], [lang^="si"]) :is([class*="tracking-"], .uppercase) {
+  letter-spacing: normal !important;
+}
+html:is([lang^="ta"], [lang^="si"]) :is(h1, h2, h3, h4) {
+  line-height: 1.32 !important;
+  overflow-wrap: break-word;
+  hyphens: manual;
+}
+/* Header: longer navigation labels — tighter items, and the search field
+   stays an icon until there is room (2xl). */
+@media (min-width: 1024px) {
+  html:is([lang^="ta"], [lang^="si"]) header nav a {
+    font-size: 0.86rem;
+    padding-inline: 0.5rem;
+    white-space: nowrap;
+  }
+  html:is([lang^="ta"], [lang^="si"]) .header-search-full {
+    display: none;
+  }
+  html:is([lang^="ta"], [lang^="si"]) .header-search-icon {
+    display: block;
+  }
+}
+@media (min-width: 1536px) {
+  html:is([lang^="ta"], [lang^="si"]) .header-search-full {
+    display: block;
+  }
+  html:is([lang^="ta"], [lang^="si"]) .header-search-icon {
+    display: none;
+  }
+}
+/* Remembered Tamil / Sinhala: hide the English server HTML until React applies
+   the language (the boot script always removes this within 1.8 s). */
+html.i18n-pending :is(#main, header, footer) {
+  visibility: hidden;
+}
+/* "Build Better… Live Better…" keeps one line per phrase; longer in Tamil / Sinhala. */
+html:is([lang^="ta"], [lang^="si"]) .bp-words {
+  font-size: clamp(1.15rem, 5.2vw, 1.5rem);
+  white-space: normal;
+}
+
+/* Language dropdown (header): smooth open / close, no motion when reduced motion is preferred. */
+.lang-menu {
+  transform-origin: top right;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease,
+    display 160ms allow-discrete;
+}
+.lang-menu[hidden] {
+  display: none;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.97);
+}
+@starting-style {
+  .lang-menu:not([hidden]) {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lang-menu {
+    transition: none;
+  }
+}
+
+/* Our Brands: centred cards — 2 per row on phones, then as many ~15rem cards as fit. */
+.brand-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.brand-grid:has(> li:only-child) {
+  grid-template-columns: minmax(0, 16rem);
+}
+@media (min-width: 640px) {
+  .brand-grid {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 15rem));
+  }
+}
+
+/* Service actions (View Service · Enquire), in every language and container width: ServiceActions
+   measures the wider button's one-line width into --pair-min, so the .btn-pair grid shows two EQUAL
+   columns only when both labels fit on one line and otherwise stacks them at full width. The
+   fallback (before measuring / without JS) is a safe estimate. */
+.service-actions-wrap {
+  --pair-min: 11rem;
+}
+:root:is([lang^="ta"], [lang^="si"]) .service-actions-wrap:not([style*="--pair-min"]) {
+  --pair-min: 14rem;
+}
+/* The pair itself always uses the wrapper's (measured) value, overriding the generic Tamil /
+   Sinhala .btn-pair minimum. */
+:root .service-actions-wrap > .btn-pair.service-actions {
+  --pair-min: inherit;
+}
+@media (max-width: 639.98px) {
+  .service-actions a {
+    min-height: 2.75rem;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Gold skyline line-art: identical thin strokes at every rendered size. */
+.skyline-art path {
+  vector-effect: non-scaling-stroke;
+}
+
+/* Tamil / Sinhala: longer CTA labels stay on ONE line — pairs stack sooner and, on narrow
+   screens, labels get slightly tighter type and padding (never below a readable 0.8rem). */
+:root:is([lang^="ta"], [lang^="si"]) .btn-pair {
+  --pair-min: 16rem;
+}
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+  :root:is([lang^="ta"], [lang^="si"]) .home-contact-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 479.98px) {
+  :root:is([lang^="ta"], [lang^="si"]) :is(.btn-pair a, .service-actions a, a.rounded-full, button.rounded-full) {
+    font-size: clamp(0.8rem, 3.6vw, 0.9rem);
+    padding-inline: clamp(0.75rem, 3.5vw, 1.25rem);
+    gap: 0.4rem;
+  }
+}
+
+/* Contact method buttons (Call / WhatsApp / Email): tighter type for the longer Tamil and
+   Sinhala labels in the three narrow columns (768–1279px), still one line. */
+@media (min-width: 768px) and (max-width: 1279.98px) {
+  :root:is([lang^="ta"], [lang^="si"]) .contact-methods a.rounded-full {
+    font-size: 0.82rem;
+    padding-inline: 0.85rem;
+    gap: 0.4rem;
+  }
+}
+/* Quotation submit on small phones in Tamil / Sinhala: drop the decorative icon so the
+   (long) label fits on one line at a readable size. */
+@media (max-width: 479.98px) {
+  :root:is([lang^="ta"], [lang^="si"]) .quote-submit svg {
+    display: none;
+  }
+}
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  :root:is([lang^="ta"], [lang^="si"]) .contact-methods a.rounded-full > span:first-child:has(svg) {
+    display: none;
+  }
+}
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  /* Tamil / Sinhala: the three contact methods stack (labels are too long for three columns). */
+  :root:is([lang^="ta"], [lang^="si"]) .contact-methods {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :root:is([lang^="ta"], [lang^="si"]) .contact-methods > li {
+    border-left-width: 0;
+  }
+  :root:is([lang^="ta"], [lang^="si"]) .contact-methods > li + li {
+    border-top-width: 1px;
+  }
+}
+/* Product-card WhatsApp button: tighter type for Tamil / Sinhala labels in narrow cards. */
+:root:is([lang^="ta"], [lang^="si"]) .wa-cta {
+  font-size: 0.8rem;
+  padding-inline: 0.6rem;
+  gap: 0.35rem;
 }

@@ -1,8 +1,5 @@
-import Image from "next/image";
-import Link from "next/link";
 import { ArrowRight, MapPin, Phone } from "lucide-react";
 import { business, mapsHref, telHref } from "@/content/business";
-import { testimonials } from "@/content/testimonials";
 import { images } from "@/lib/images";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
@@ -10,46 +7,20 @@ import { InView } from "@/components/ui/InView";
 import { LocationVisual } from "./LocationVisual";
 import { ConstructionSkyline } from "./ConstructionSkyline";
 import { Testimonials } from "./Testimonials";
+import { HomeGalleryTiles } from "./HomeGalleryTiles";
+import { T } from "@/i18n/I18nProvider";
 
 /**
- * Home gallery tiles — real store photographs. Spans/heights per breakpoint:
- * phones = a swipeable, staggered strip; sm–md = 6-column collage;
- * lg = 12-column editorial collage (one tall feature image + four).
+ * Bundled tiles, used ONLY by a static build without the API. With the API, the home collage shows
+ * the Admin Gallery's first five published photos (HomeGalleryTiles).
  */
-const tiles = [
-  {
-    image: images.aisleTools,
-    label: "Tools & paint aisle",
-    tile: "max-sm:h-72 sm:col-span-4 sm:row-span-2 lg:col-span-5 lg:row-span-2",
-    position: "object-[30%_50%]",
-  },
-  {
-    image: images.aisleMaterials,
-    label: "Pipes, boards & blocks",
-    tile: "max-sm:mt-8 max-sm:h-60 sm:col-span-2 lg:col-span-4",
-    position: "object-center",
-  },
-  {
-    image: images.plumbing,
-    label: "Plumbing fittings",
-    tile: "max-sm:h-72 sm:col-span-2 lg:col-span-3",
-    position: "object-center",
-  },
-  {
-    image: images.toolsPaint,
-    label: "Paint & power tools",
-    tile: "max-sm:mt-8 max-sm:h-60 sm:col-span-3 lg:col-span-3",
-    position: "object-center",
-  },
-  {
-    image: images.shopFront,
-    label: "Our shop front",
-    tile: "max-sm:h-72 sm:col-span-3 lg:col-span-4",
-    position: "object-[50%_40%]",
-  },
-] as const;
-
-const tileDelays = ["d1", "d2", "d3", "d4", "d5"];
+const fallbackTiles = [
+  { ...images.aisleTools, label: "Tools & paint aisle", position: "object-[30%_50%]" },
+  { ...images.aisleMaterials, label: "Pipes, boards & blocks", position: "object-center" },
+  { ...images.plumbing, label: "Plumbing fittings", position: "object-center" },
+  { ...images.toolsPaint, label: "Paint & power tools", position: "object-center" },
+  { ...images.shopFront, label: "Our shop front", position: "object-[50%_40%]" },
+].map(({ src, alt, label, position }) => ({ src, alt, label, position }));
 
 /**
  * Home: Gallery (image-led collage) and, separately, What Our Customers Say
@@ -68,9 +39,11 @@ export function GalleryFeedback() {
                   id="gallery-preview-title"
                   className="rv mt-4 font-display text-3xl font-semibold text-forest sm:text-[2.1rem] lg:text-[2.6rem]"
                 >
-                  Our Gallery
+                  <T>Our Gallery</T>
                 </h2>
-                <p className="rv d1 mt-2 text-ink-muted">A look inside the store.</p>
+                <p className="rv d1 mt-2 text-ink-muted">
+                  <T>A look inside the store.</T>
+                </p>
               </div>
               <div className="rv d2">
                 <Button href="/gallery/" variant="outline" arrow="right">
@@ -79,42 +52,13 @@ export function GalleryFeedback() {
               </div>
             </div>
 
-            {/* Phones: swipe sideways (snap); larger screens: collage. */}
-            <ul className="gallery-strip -mx-4 mt-8 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:auto-rows-[11rem] sm:grid-cols-6 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:mt-10 lg:auto-rows-[15rem] lg:grid-cols-12">
-              {tiles.map((t, i) => (
-                <li
-                  key={t.label}
-                  className={`rv-img ${tileDelays[i]} w-[72%] shrink-0 snap-start min-[480px]:w-[46%] sm:w-auto ${t.tile}`}
-                >
-                  <Link
-                    href="/gallery/"
-                    className="zoom-img group relative block h-full overflow-hidden rounded-[1.25rem] bg-cream-deep shadow-[var(--shadow-card)]"
-                  >
-                    <Image
-                      src={t.image.src}
-                      alt={t.image.alt}
-                      fill
-                      quality={85}
-                      sizes="(min-width: 1024px) 40vw, (min-width: 640px) 50vw, 72vw"
-                      className={`object-cover ${t.position}`}
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-forest-900/70 to-transparent"
-                    />
-                    <span className="absolute bottom-3 left-3 text-sm font-semibold text-white">
-                      {t.label}
-                      <span className="sr-only"> — open the gallery</span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            {/* Phones: swipe sideways (snap); larger screens: collage — from the Admin Gallery. */}
+            <HomeGalleryTiles fallback={fallbackTiles} />
           </InView>
         </Container>
       </section>
 
-      <Testimonials items={testimonials} />
+      <Testimonials />
     </>
   );
 }
@@ -142,7 +86,7 @@ export function FindStore() {
         aria-hidden="true"
         className="absolute inset-x-0 bottom-0 -z-10 h-[45%] bg-gradient-to-t from-brass-100/50 to-transparent"
       />
-      <ConstructionSkyline className="skyline-fade absolute inset-x-0 bottom-0 -z-10 h-24 w-full text-brass/40 sm:h-28 lg:aspect-[1440/150] lg:h-auto lg:text-brass/55" />
+      <ConstructionSkyline className="skyline-fade absolute inset-x-0 bottom-0 -z-10 aspect-[1440/150] h-auto w-full text-brass/40 lg:text-brass/55" />
 
       <Container size="wide">
         {/* Phones: heading → address → 3D map → Get Directions (the text column is
@@ -158,13 +102,13 @@ export function FindStore() {
               id="find-store-title"
               className="rv mt-4 font-display text-3xl font-semibold text-forest sm:text-[2.1rem] lg:text-[2.6rem]"
             >
-              Find Our Store
+              <T>Find Our Store</T>
             </h2>
             <ul className="rv d2 mt-4 space-y-2.5 text-lg text-charcoal">
               <li className="flex items-start gap-2.5">
                 <MapPin aria-hidden="true" className="mt-1 size-5 shrink-0 text-brass" />
                 <span>
-                  {business.address.street}, {business.address.locality}, {business.address.country}
+                  <T>{`${business.address.street}, ${business.address.locality}, ${business.address.country}`}</T>
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
@@ -176,7 +120,7 @@ export function FindStore() {
             </ul>
             <div className="rv d3 mt-7 max-md:order-2 max-md:mt-3">
               <Button href={mapsHref} external variant="gold" arrow={false}>
-                Get Directions
+                <T>Get Directions</T>
                 <ArrowRight aria-hidden="true" className="ml-2 inline size-4" />
               </Button>
             </div>

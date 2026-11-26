@@ -2,6 +2,7 @@ import { Container } from "@/components/ui/Container";
 import { InView } from "@/components/ui/InView";
 import { HomeEyebrow } from "./HomeEyebrow";
 import { HomeCategoryCards } from "./HomeCategoryCards";
+import { T } from "@/i18n/I18nProvider";
 
 export function ProductsSection() {
   return (
@@ -16,7 +17,7 @@ export function ProductsSection() {
               id="products-title"
               className="rv d1 mt-4 font-display text-3xl leading-tight font-semibold text-forest sm:text-4xl lg:text-[2.6rem]"
             >
-              Everything for Your Building Needs
+              <T>Everything for Your Building Needs</T>
             </h2>
           </div>
 

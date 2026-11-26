@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { catalogue, productCategories, productTypes } from "../../src/content/products.ts";
-import { whatsappProductEnquiryHref } from "../../src/content/business.ts";
 import { testimonials } from "../../src/content/testimonials.ts";
 import {
   filterProductTypes,
@@ -140,12 +139,4 @@ test("search and filters work on the documented product types only", () => {
   assert.deepEqual(filterProductTypes("solar panel", "all"), []);
 });
 
-test("product WhatsApp enquiry is URL-encoded and names the product", () => {
-  const href = whatsappProductEnquiryHref("plywood");
-  assert.match(href, /^https:\/\/wa\.me\/94712259699\?text=/);
-  assert.equal(
-    decodeURIComponent(href.split("?text=")[1]!),
-    "Hello Pathirana Hardware,\nI would like to enquire about plywood.\nPlease share available options and prices.",
-  );
-  assert.doesNotMatch(href.split("?text=")[1]!, /[ \n,]/);
-});
+// Product WhatsApp enquiries: see tests/unit/product-enquiry.test.ts.

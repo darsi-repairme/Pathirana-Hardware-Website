@@ -24,12 +24,16 @@ export type LivePrice = {
 
 export type LiveImage = { url: string; thumbUrl: string; alt: string; width: number; height: number };
 
+/** Staff-entered Tamil / Sinhala text (API with migration 0006). Older APIs omit it → English. */
+export type LiveTranslations<K extends string> = Partial<Record<"ta" | "si", Partial<Record<K, string>>>>;
+
 export type LiveProduct = {
   slug: string;
   name: string;
   summary: string | null;
   description?: string | null;
-  category: { slug: string; name: string };
+  translations?: LiveTranslations<"name" | "summary" | "description">;
+  category: { slug: string; name: string; translations?: LiveTranslations<"name"> };
   brands: { slug: string; name: string }[];
   unit: string | null;
   availability: Availability;
@@ -44,6 +48,7 @@ export type LiveCategory = {
   slug: string;
   name: string;
   description: string | null;
+  translations?: LiveTranslations<"name" | "description">;
   productCount: number;
   /** Staff-uploaded image (API with migration 0003); absent or null otherwise. */
   image?: { url: string; thumbUrl: string; alt: string; width: number; height: number } | null;
@@ -105,18 +110,27 @@ export const AVAILABILITY_LABEL: Record<Availability, string> = {
   on_request: "On Request",
 };
 
-/** "2250.5" → "LKR 2,250.50" — formatting only, no arithmetic. */
-export function formatLkr(amount: string): string {
-  const [whole = "0", frac = ""] = amount.split(".");
-  return `LKR ${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${frac.padEnd(2, "0").slice(0, 2)}`;
-}
+/** "2250.5" → "LKR 2,250.50" — formatting only, no arithmetic (shared with the WhatsApp enquiry). */
+export { formatLkr } from "./money";
 
 /** "10.00" → "10%". */
 export const formatPercent = (v: string) => `${v.replace(/\.?0+$/, "")}%`;
 
-/** "2026-12-31" → "31 Dec 2026" (date only; no timezone shifts). */
-export function formatDate(d: string): string {
+/** "2026-12-31" → "31 Dec 2026" (date only; no timezone shifts). Other languages: the browser's local month names. */
+export function formatDate(d: string, htmlLang = "en"): string {
   const [y, m, day] = d.split("-").map(Number) as [number, number, number];
+  if (!htmlLang.startsWith("en")) {
+    try {
+      return new Intl.DateTimeFormat(htmlLang, {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(Date.UTC(y, m - 1, day)));
+    } catch {
+      // Fall through to the English format.
+    }
+  }
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${day} ${months[m - 1]} ${y}`;
 }

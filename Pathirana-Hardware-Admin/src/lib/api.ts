@@ -10,6 +10,7 @@ export type Category = {
   slug: string;
   name: string;
   description: string | null;
+  translations?: Translations<"name" | "description">;
   sortOrder: number;
   isActive: boolean;
   /** Staff-uploaded category image (migration 0003); null when none. Older APIs omit these. */
@@ -108,6 +109,7 @@ export type Product = PricingFields & {
   summary: string | null;
   description: string | null;
   searchTerms: string[];
+  translations?: ProductTranslations;
   isPublished: boolean;
   publishedAt: string | null;
   createdAt: string;
@@ -158,7 +160,86 @@ export type QuotationDetail = Omit<QuotationListItem, "itemCount" | "photoCount"
     productSlug: string | null;
   }[];
   photos: { id: string; position: number; width: number; height: number; sizeBytes: number }[];
+  /** Promo code the customer quoted (migration 0009) and what the API found when it was saved. */
+  promoCode?: string | null;
+  promoStatus?: PromoStatus | null;
+  promoOfferTitle?: string | null;
+  promoOfferBenefit?: string | null;
 };
+
+/** Offers & promo codes (migration 0009). */
+export type PromoStatus = "valid" | "not_eligible" | "expired" | "unknown";
+export const PROMO_STATUS_LABEL: Record<PromoStatus, string> = {
+  valid: "Valid for this request",
+  not_eligible: "Code exists, but not for the requested items",
+  expired: "Offer has ended",
+  unknown: "Not a current offer code",
+};
+export type OfferStatus = "active" | "scheduled" | "expired" | "hidden";
+export type OfferLink = { id: string; name: string; slug: string };
+export type Offer = {
+  id: string;
+  title: string;
+  benefit: string;
+  description: string;
+  discountType: "none" | "percentage" | "fixed";
+  discountValue: number | null;
+  promoCode: string | null;
+  minPurchaseLkr: number | null;
+  appliesTo: "all" | "selected";
+  startsOn: string | null;
+  endsOn: string | null;
+  sortOrder: number;
+  isPublished: boolean;
+  status: OfferStatus;
+  translations?: LocaleTexts;
+  products: OfferLink[];
+  categories: OfferLink[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Customer feedback (migration 0007). Only "approved" is ever shown on the website. */
+export type FeedbackStatus = "pending" | "approved" | "rejected" | "hidden";
+export const FEEDBACK_STATUSES: readonly FeedbackStatus[] = ["pending", "approved", "rejected", "hidden"];
+export const FEEDBACK_STATUS_LABEL: Record<FeedbackStatus, string> = {
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+  hidden: "Hidden",
+};
+export const FEEDBACK_LANGUAGE_LABEL: Record<"en" | "ta" | "si", string> = {
+  en: "English",
+  ta: "Tamil",
+  si: "Sinhala",
+};
+export type Feedback = {
+  id: string;
+  name: string;
+  rating: number;
+  message: string;
+  location: string | null;
+  language: "en" | "ta" | "si";
+  status: FeedbackStatus;
+  consent: boolean;
+  consentVersion: string;
+  note: string | null;
+  submittedAt: string;
+  moderatedAt: string | null;
+  moderatedBy: string | null;
+  approvedAt: string | null;
+};
+export type FeedbackPage = Page<Feedback> & { statusCounts: Record<FeedbackStatus, number> };
+
+/**
+ * Staff-entered Tamil (ta) / Sinhala (si) text (migration 0006). English stays in the
+ * normal fields and is shown whenever a translation is missing. Older APIs omit this.
+ */
+export type LocaleText<K extends string> = Partial<Record<K, string>>;
+export type Translations<K extends string> = Partial<Record<"ta" | "si", LocaleText<K>>>;
+export type ProductTranslations = Partial<
+  Record<"ta" | "si", { name?: string; summary?: string; description?: string; searchTerms?: string[] }>
+>;
 
 export type DeliveryArea = {
   id: string;
@@ -166,6 +247,7 @@ export type DeliveryArea = {
   district: string | null;
   postalCode: string | null;
   notes: string | null;
+  translations?: Translations<"name" | "notes">;
   feeLkr: number | null;
   isActive: boolean;
   archivedAt: string | null;
@@ -181,6 +263,10 @@ export type StaffMember = {
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  /** Profile photo version (cache key), null when there is no photo (migration 0010; older APIs omit it). */
+  photoVersion?: string | null;
+  /** An unused one-time set-up / reset link exists (migration 0008). */
+  setupLinkPending?: boolean;
 };
 
 export type Dashboard = {
@@ -192,8 +278,19 @@ export type Dashboard = {
     activeDeliveryAreas: number;
     /** Present once migration 0004 (quotation requests) is applied. */
     newQuotations?: number;
+    /** Present once migration 0007 (customer feedback) is applied. */
+    pendingFeedback?: number;
   };
-  activity: { id: string; action: string; entityType: string; createdAt: string; staffName: string | null }[];
+  /** Admins only (audit:view); not sent at all for editors. */
+  activity?: AuditEntry[];
+};
+export type AuditEntry = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId?: string | null;
+  createdAt: string;
+  staffName: string | null;
 };
 
 export class ApiError extends Error {
@@ -221,6 +318,7 @@ function sessionEnded() {
 async function toError(res: Response): Promise<ApiError> {
   let message = `Request failed (${res.status}).`;
   let details: string[] = [];
+  let fromApi = false;
   try {
     const body = (await res.json()) as { message?: string | string[] };
     if (Array.isArray(body.message)) {
@@ -228,12 +326,15 @@ async function toError(res: Response): Promise<ApiError> {
       message = "Please correct the highlighted details.";
     } else if (body.message) {
       message = body.message;
+      fromApi = true;
     }
   } catch {
     // Non-JSON body: keep the generic message.
   }
   if (res.status === 403) message = "You do not have permission to do this.";
-  if (res.status === 409 && !details.length) message = body409(message);
+  // 409: keep the API's own message (e.g. "Another offer already uses this promo code.", audit
+  // ADM-2); the generic wording is only a fallback when the API sent none.
+  if (res.status === 409 && !details.length && !fromApi) message = body409(message);
   return new ApiError(res.status, message, details);
 }
 
@@ -265,11 +366,58 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
+/**
+ * GET de-duplication: identical GETs that are IN FLIGHT at the same moment share one request (e.g.
+ * the top bar's notification counts and the Dashboard both asking for admin/dashboard on load).
+ * Nothing is kept after the response arrives unless a caller asks for a short `maxAgeMs` (only the
+ * notification counts do); every change made through this client (POST/PATCH/PUT/DELETE or an
+ * upload) clears those kept responses, so staff never see their own change missing.
+ */
+const inflight = new Map<string, Promise<unknown>>();
+const recent = new Map<string, { at: number; data: unknown }>();
+/** Paths some caller allows to be reused briefly (only their responses are kept). */
+const reusable = new Set<string>();
+export const clearRecentGets = () => recent.clear();
+
+function get<T>(path: string, maxAgeMs = 0): Promise<T> {
+  if (maxAgeMs > 0) reusable.add(path);
+  const hit = recent.get(path);
+  if (maxAgeMs > 0 && hit && Date.now() - hit.at < maxAgeMs) return Promise.resolve(hit.data as T);
+  let p = inflight.get(path) as Promise<T> | undefined;
+  if (!p) {
+    p = request<T>("GET", path)
+      .then((data) => {
+        if (reusable.has(path)) recent.set(path, { at: Date.now(), data });
+        return data;
+      })
+      .finally(() => inflight.delete(path));
+    inflight.set(path, p);
+  }
+  return p;
+}
+
+/** Fired after a successful change to quotations or feedback: the top-bar bell reloads its counts. */
+export const COUNTS_CHANGED = "ph:counts-changed";
+
+function change<T>(method: string, path: string, body?: unknown): Promise<T> {
+  clearRecentGets();
+  return request<T>(method, path, body)
+    .then((result) => {
+      // Only after the API confirmed the change (a failed request never changes the count).
+      if (/^admin\/(quotations|feedback)\//.test(path) && typeof window !== "undefined") {
+        window.dispatchEvent(new Event(COUNTS_CHANGED));
+      }
+      return result;
+    })
+    .finally(clearRecentGets);
+}
+
 export const api = {
-  get: <T>(path: string) => request<T>("GET", path),
-  post: <T>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}),
-  patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),
-  del: <T = void>(path: string, body?: unknown) => request<T>("DELETE", path, body),
+  get: <T>(path: string, opts?: { maxAgeMs?: number }) => get<T>(path, opts?.maxAgeMs),
+  post: <T>(path: string, body?: unknown) => change<T>("POST", path, body ?? {}),
+  patch: <T>(path: string, body: unknown) => change<T>("PATCH", path, body),
+  put: <T>(path: string, body: unknown) => change<T>("PUT", path, body),
+  del: <T = void>(path: string, body?: unknown) => change<T>("DELETE", path, body),
 };
 
 /** URL (same origin) to preview a product image, including unpublished products. */
@@ -302,19 +450,32 @@ export function uploadImage(
   );
 }
 
-/** multipart/form-data POST of one file (+ text fields) through the admin gateway, with progress. */
+/** URL (same origin, staff-only) of a profile photo; `v` (the photo version) busts the browser cache. */
+export const profilePhotoUrl = (
+  target: { self: true } | { staffId: string },
+  version: string,
+  size: "full" | "thumb" = "thumb",
+) =>
+  `${BASE}/${"self" in target ? "admin/profile/photo" : `admin/staff/${target.staffId}/photo`}?v=${version}${
+    size === "thumb" ? "&size=thumb" : ""
+  }`;
+
+/** multipart/form-data upload (POST, or PUT for replace-style endpoints) of one file (+ text
+ *  fields) through the admin gateway, with progress. */
 export function uploadFile<T>(
   path: string,
   file: File,
   fields: Record<string, string>,
   onProgress: (fraction: number) => void,
+  method: "POST" | "PUT" = "POST",
 ): Promise<T> {
+  clearRecentGets();
   return new Promise((resolve, reject) => {
     const form = new FormData();
     for (const [k, v] of Object.entries(fields)) form.append(k, v);
     form.append("file", file);
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${BASE}/${path}`);
+    xhr.open(method, `${BASE}/${path}`);
     xhr.setRequestHeader("x-ph-admin", "1");
     xhr.setRequestHeader("Accept", "application/json");
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
@@ -345,6 +506,12 @@ export function qs(params: Record<string, string | number | undefined | null | f
   return s ? `?${s}` : "";
 }
 
+/** Date and time in Sri Lanka, e.g. "20 Nov 2026, 3:31 pm". */
+export const formatDateTime = (iso: string) =>
+  new Intl.DateTimeFormat("en-LK", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Colombo" }).format(
+    new Date(iso),
+  );
+
 export const formatDate = (iso: string | null) =>
   iso
     ? new Date(iso).toLocaleString("en-GB", {
@@ -355,3 +522,50 @@ export const formatDate = (iso: string | null) =>
         minute: "2-digit",
       })
     : "—";
+
+/* ── Services & Gallery (migration 0008) ───────────────────────────────── */
+export const SERVICE_ICONS = ["bricks", "truck", "boxes", "bookmark", "lightbulb", "hardhat"] as const;
+export const SERVICE_KINDS = ["materials", "delivery", "bulk", "reservations", "guidance", "contractor"] as const;
+export type LocaleTexts = Partial<Record<"ta" | "si", Record<string, string>>>;
+
+export type SiteService = {
+  id: string;
+  slug: string;
+  title: string;
+  shortTitle: string;
+  summary: string;
+  description: string;
+  howToAsk: string;
+  enquireAbout: string[];
+  share: string;
+  icon: (typeof SERVICE_ICONS)[number];
+  kind: (typeof SERVICE_KINDS)[number];
+  sortOrder: number;
+  isPublished: boolean;
+  imageKey: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
+  imageAlt: string | null;
+  translations: LocaleTexts;
+  updatedAt: string;
+};
+
+export type GalleryPhoto = {
+  id: string;
+  title: string;
+  caption: string | null;
+  altText: string;
+  collection: string | null;
+  sortOrder: number;
+  isPublished: boolean;
+  width: number;
+  height: number;
+  sizeBytes: number;
+  translations: LocaleTexts;
+  updatedAt: string;
+};
+
+export const serviceImageUrl = (s: Pick<SiteService, "id" | "imageKey">, size: "full" | "thumb" = "thumb") =>
+  `${BASE}/admin/services/${s.id}/image?v=${s.imageKey}${size === "thumb" ? "&size=thumb" : ""}`;
+export const galleryImageUrl = (g: Pick<GalleryPhoto, "id" | "updatedAt">, size: "full" | "thumb" = "thumb") =>
+  `${BASE}/admin/gallery/${g.id}/image?v=${encodeURIComponent(g.updatedAt)}${size === "thumb" ? "&size=thumb" : ""}`;

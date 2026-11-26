@@ -35,6 +35,8 @@ export type DeliveryArea = {
   district: string | null;
   postalCode: string | null;
   notes: string | null;
+  /** Staff-entered Tamil / Sinhala name and notes (API with migration 0006). */
+  translations?: Partial<Record<"ta" | "si", { name?: string; notes?: string }>>;
 };
 export type DeliveryAreaList = { items: DeliveryArea[]; total: number };
 export type DeliveryCheck = {

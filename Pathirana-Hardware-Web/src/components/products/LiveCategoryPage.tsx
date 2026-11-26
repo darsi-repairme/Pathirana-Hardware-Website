@@ -16,6 +16,7 @@ import { CategoryVisual } from "./CategoryVisual";
 import { OtherCategoryPills } from "./CategoryLinks";
 import { LiveCategoryProducts } from "./LiveCategoryProducts";
 import { Message, ProductDetailSkeleton } from "./ProductDetail";
+import { useDynamicText, useLocale } from "@/i18n/I18nProvider";
 
 /**
  * Live category page: /products/category/?slug=<category-slug>.
@@ -29,13 +30,17 @@ export function LiveCategoryPage() {
   const documented = !!getCategory(slug);
   const { status, category, retry } = useLiveCategory(slug);
   const enabled = liveCatalogueEnabled();
+  const { t, locale } = useLocale();
+  const pick = useDynamicText();
+  const name = category ? pick(category.name, category.translations, "name") : "";
+  const description = category ? pick(category.description, category.translations, "description") : null;
 
   useEffect(() => {
     if (documented) router.replace(`/products/categories/${slug}/`);
   }, [documented, router, slug]);
   useEffect(() => {
-    if (category) document.title = `${category.name} — Products | ${business.shortName}`;
-  }, [category]);
+    if (category) document.title = `${name} — ${t("Products")} | ${business.shortName}`;
+  }, [category, name, t]);
 
   if (documented) return <ProductDetailSkeleton />;
   if (!slug || !enabled || status === "missing") {
@@ -65,11 +70,11 @@ export function LiveCategoryPage() {
   return (
     <div data-live-category={category.slug}>
       <PageHero
-        crumb={category.name}
+        crumb={name}
         parents={[{ label: "Products", href: "/products/" }]}
         eyebrow="Product category"
-        title={category.name}
-        intro={category.description ? <p>{category.description}</p> : <p>Ask the store about the items you need.</p>}
+        title={name}
+        intro={description ? <p>{description}</p> : <p>{t("Ask the store about the items you need.")}</p>}
         media={
           <div className="relative mx-auto aspect-[4/3] w-full max-w-xl overflow-hidden rounded-[1.75rem] bg-forest-900 shadow-[var(--shadow-lift)] ring-1 ring-white/15 lg:max-w-none">
             <CategoryVisual
@@ -81,26 +86,27 @@ export function LiveCategoryPage() {
         }
       >
         <Button
-          href={whatsappEnquiryHref(category.name)}
+          href={whatsappEnquiryHref(name, locale)}
           external
           variant="gold"
           icon={<WhatsAppIcon />}
           className="!bg-[#177a42] !text-white hover:!bg-[#11653a]"
         >
-          Enquire on WhatsApp
+          {t("Enquire on WhatsApp")}
         </Button>
         <Button href={telHref} variant="outlineLight" icon={<Phone />}>
-          Call {business.phone.display}
+          {t("Call {phone}", { phone: business.phone.display })}
         </Button>
       </PageHero>
 
       <div className="bg-cream pt-16 lg:pt-24">
-        <LiveCategoryProducts category={category.slug} title={category.name} />
+        <LiveCategoryProducts category={category.slug} title={name} />
         {category.productCount === 0 ? (
           <Container size="wide" className="pb-12">
             <p className="rounded-2xl border border-line/70 bg-white p-6 text-ink-muted">
-              Individual products in this category are not listed online yet. Call or WhatsApp the store and we will
-              confirm what is available.
+              {t(
+                "Individual products in this category are not listed online yet. Call or WhatsApp the store and we will confirm what is available.",
+              )}
             </p>
           </Container>
         ) : null}
@@ -109,7 +115,7 @@ export function LiveCategoryPage() {
       <section aria-labelledby="other-categories" className="bg-cream pb-16 lg:pb-24">
         <Container size="wide">
           <h2 id="other-categories" className="font-display text-2xl font-medium text-charcoal sm:text-3xl">
-            Other categories
+            {t("Other categories")}
           </h2>
           <OtherCategoryPills current={category.slug} className="mt-6 flex flex-wrap gap-3" />
         </Container>

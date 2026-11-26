@@ -50,15 +50,18 @@ describe("Admin extras", () => {
     expect(after.body.counts.products).toBe(before.body.counts.products + 1);
     expect(after.body.counts.publishedProducts).toBe(before.body.counts.publishedProducts + 1);
     expect(after.body.counts.categories).toBe(before.body.counts.categories + 1);
-    expect(after.body.activity[0]).toMatchObject({ action: "product.publish", staffName: "Test admin" });
-    expect(after.body.activity[0]).not.toHaveProperty("details");
+    // Editors get counts only: no Recent Activity (the audit log is for administrators).
+    expect(after.body).not.toHaveProperty("activity");
+    const adminView = await http.get("/api/v1/admin/dashboard").set(admin).expect(200);
+    expect(adminView.body.activity[0]).toMatchObject({ action: "product.publish", staffName: "Test admin" });
+    expect(adminView.body.activity[0]).not.toHaveProperty("details");
 
     await db.query(
       "INSERT INTO audit_log (staff_id, action, entity_type, entity_id) SELECT id, 'staff.create', 'staff', id FROM staff WHERE email = $1",
       [ADMIN.email],
     );
     const forEditor = await http.get("/api/v1/admin/dashboard").set(editor).expect(200);
-    expect(forEditor.body.activity.some((a: { entityType: string }) => a.entityType === "staff")).toBe(false);
+    expect(forEditor.body).not.toHaveProperty("activity");
     const forAdmin = await http.get("/api/v1/admin/dashboard").set(admin).expect(200);
     expect(forAdmin.body.activity[0].entityType).toBe("staff");
   });

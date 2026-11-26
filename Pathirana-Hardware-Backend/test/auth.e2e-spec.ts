@@ -91,7 +91,8 @@ describe("Foundation and authentication", () => {
   });
 
   it("locks an account after repeated failures without revealing it", async () => {
-    await db.query("UPDATE staff SET failed_login_count = 4 WHERE email = $1", [ADMIN.email]);
+    // One failure before the account-wide limit (ACCOUNT_MAX_FAILURES = 20, all sources together).
+    await db.query("UPDATE staff SET failed_login_count = 19 WHERE email = $1", [ADMIN.email]);
     const wrong = await http.post("/api/v1/auth/login").send({ ...ADMIN, password: "wrong-password-1" }); // login 4
     expect(wrong.status).toBe(401);
     // Correct password while locked: same generic answer.
@@ -102,8 +103,20 @@ describe("Foundation and authentication", () => {
     expect(audit.rowCount).toBe(1);
   });
 
-  it("rate-limits login attempts", async () => {
+  it("rate-limits login attempts per client and email", async () => {
+    // 5 per minute for one email from one client: the 6th is refused.
+    for (let i = 0; i < 5; i++) {
+      const ok = await http
+        .post("/api/v1/auth/login")
+        .send({ email: "x@test.invalid", password: "whatever" });
+      expect(ok.status).toBe(401);
+    }
     const res = await http.post("/api/v1/auth/login").send({ email: "x@test.invalid", password: "whatever" }); // 6th
     expect(res.status).toBe(429);
+    // Another email from the same client still gets its own attempts.
+    const other = await http
+      .post("/api/v1/auth/login")
+      .send({ email: "y@test.invalid", password: "whatever" });
+    expect(other.status).toBe(401);
   });
 });

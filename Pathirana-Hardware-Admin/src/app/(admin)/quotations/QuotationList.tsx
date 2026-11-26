@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ClipboardList, ImageIcon, Truck, Store } from "lucide-react";
+import { ClipboardList, ImageIcon, Truck, Store, Eye } from "lucide-react";
 import { qs, QUOTATION_STATUS_LABEL, QUOTATION_STATUSES, type QuotationPage, type QuotationStatus } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { Alert, Badge, Card, EmptyState, PageHeader, Pagination, SearchBox, Select, Spinner } from "@/components/ui";
@@ -17,10 +17,8 @@ export const STATUS_TONE: Record<QuotationStatus, "green" | "gold" | "grey" | "r
   cancelled: "red",
 };
 
-export const formatDateTime = (iso: string) =>
-  new Intl.DateTimeFormat("en-LK", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Colombo" }).format(
-    new Date(iso),
-  );
+import { formatDateTime } from "@/lib/api";
+export { formatDateTime };
 
 export function QuotationList({ initialStatus }: { initialStatus: string }) {
   const [q, setQ] = useState("");
@@ -92,7 +90,11 @@ export function QuotationList({ initialStatus }: { initialStatus: string }) {
         {data && data.items.length ? (
           <ul className="divide-y divide-line/60">
             {data.items.map((r) => (
-              <li key={r.id} className="flex flex-col gap-2 px-4 py-3 hover:bg-cream/40 md:flex-row md:items-center">
+              <li
+                key={r.id}
+                data-quotation={r.reference}
+                className="flex flex-col gap-2 px-4 py-3 hover:bg-cream/40 md:flex-row md:items-center"
+              >
                 <div className="min-w-0 flex-1">
                   <Link
                     href={`/quotations/${r.id}`}
@@ -100,12 +102,18 @@ export function QuotationList({ initialStatus }: { initialStatus: string }) {
                   >
                     {r.reference}
                   </Link>
+                  {r.status === "new" ? (
+                    <span className="ml-2 inline-flex items-center rounded-full bg-logo-red px-2 py-0.5 text-[0.65rem] font-bold tracking-wide text-white uppercase">
+                      New
+                    </span>
+                  ) : null}
                   <p className="truncate font-semibold text-charcoal">{r.customerName}</p>
                   <p className="truncate text-xs text-ink-muted">
                     {r.phone} · {r.location} · {formatDateTime(r.createdAt)}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+                {/* Fixed-width columns on wide screens so details and status line up from row to row. */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted md:w-48 md:shrink-0">
                   <span className="inline-flex items-center gap-1">
                     {r.fulfilment === "delivery" ? (
                       <Truck aria-hidden="true" className="size-3.5" />
@@ -123,8 +131,17 @@ export function QuotationList({ initialStatus }: { initialStatus: string }) {
                     </span>
                   ) : null}
                 </div>
-                <div className="md:w-28 md:text-right">
-                  <Badge tone={STATUS_TONE[r.status]}>{QUOTATION_STATUS_LABEL[r.status]}</Badge>
+                <div className="flex items-center justify-between gap-3 md:w-64 md:shrink-0">
+                  <span className="md:w-28">
+                    <Badge tone={STATUS_TONE[r.status]}>{QUOTATION_STATUS_LABEL[r.status]}</Badge>
+                  </span>
+                  <Link
+                    href={`/quotations/${r.id}`}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full bg-forest px-3.5 text-[0.8125rem] font-semibold whitespace-nowrap text-white hover:bg-forest-800"
+                  >
+                    <Eye aria-hidden="true" className="size-4" /> View Details
+                    <span className="sr-only"> of {r.reference}</span>
+                  </Link>
                 </div>
               </li>
             ))}

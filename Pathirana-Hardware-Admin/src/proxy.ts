@@ -20,5 +20,5 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   // Admin pages only: not the login page, API routes, Next assets or public files.
-  matcher: ["/((?!login|api/|_next/|brand/|brands/|favicon.ico|icon.png).*)"],
+  matcher: ["/((?!login|setup-password|setup-owner|api/|_next/|brand/|brands/|favicon.ico|icon.png).*)"],
 };

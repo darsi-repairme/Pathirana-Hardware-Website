@@ -20,6 +20,21 @@ const OWN_TABLES = new Set([
   "product_images",
   "delivery_areas",
   "audit_log",
+  // 0004–0005: quotation requests (and the retired email queue, kept for history)
+  "quotation_requests",
+  "quotation_items",
+  "quotation_photos",
+  "quotation_notifications",
+  "quotation_notification_recipients",
+  // 0007–0008
+  "customer_feedback",
+  "services",
+  "gallery_photos",
+  "staff_password_tokens",
+  // 0009
+  "offers",
+  "offer_products",
+  "offer_categories",
 ]);
 
 async function main() {

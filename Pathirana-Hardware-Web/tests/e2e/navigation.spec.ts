@@ -1,11 +1,14 @@
 import { expect, test } from "./fixtures";
 
+/** The home page URL on the port under test (E2E_WEB_PORT, 4173 by default). */
+const HOME = new RegExp(`127\\.0\\.0\\.1:${process.env.E2E_WEB_PORT || 4173}/$`);
+
 const NAV = [
   { name: "Products", url: /\/products\/$/ },
   { name: "Services", url: /\/services\/$/ },
   { name: "About Us", url: /\/about\/$/ },
   { name: "Contact Us", url: /\/contact\/$/ },
-  { name: "Home", url: /127\.0\.0\.1:4173\/$/ },
+  { name: "Home", url: HOME },
 ];
 const FOOTER = [...NAV.slice(0, 3), { name: "Gallery", url: /\/gallery\/$/ }, ...NAV.slice(3)];
 
@@ -48,33 +51,30 @@ test.describe("Footer", () => {
     await page.goto("/");
     const footer = page.locator("footer");
     await expect(footer).toContainText(`© ${new Date().getFullYear()} RepairMe (Pvt) Ltd. All rights reserved.`);
+    // Customer-facing brand stays "Pathirana Hardware"; the only company suffix is the requested
+    // copyright attribution (pending client/legal confirmation).
+    await expect(footer).not.toContainText("Pathirana Hardware (Pvt) Ltd");
+    expect((await footer.textContent())!.match(/\(Pvt\) Ltd/g)).toHaveLength(1);
     await expect(footer).toContainText("Shop smarter, save bigger!");
     await expect(footer).toContainText("Pallama Road");
     await expect(footer.locator('a[href="tel:+94712259699"]')).toBeVisible();
   });
 
-  test("bottom bar: copyright left, three legal links right; each opens its draft page", async ({ page }) => {
+  test("bottom bar: centred copyright; no legal links or legal pages anywhere", async ({ page }) => {
     await page.goto("/");
-    const legal = page.getByRole("navigation", { name: "Legal" });
-    const links = legal.getByRole("link");
-    await expect(links).toHaveText(["Privacy Policy", "Refund Policy", "Terms and Conditions"]);
-    const copy = (await page
-      .locator("footer")
-      .getByText(/RepairMe \(Pvt\) Ltd\./)
-      .boundingBox())!;
-    const nav = (await legal.boundingBox())!;
+    await expect(page.getByRole("navigation", { name: "Legal" })).toHaveCount(0);
+    for (const name of ["Privacy Policy", "Refund Policy", "Terms and Conditions"])
+      await expect(page.getByRole("link", { name })).toHaveCount(0);
+    const copy = page.locator("footer [data-copyright]");
+    const box = (await copy.boundingBox())!;
     const vw = page.viewportSize()!.width;
-    if (vw >= 640) expect(nav.x).toBeGreaterThan(copy.x + copy.width - 1); // side by side
-    expect(nav.x + nav.width).toBeLessThanOrEqual(vw);
-    for (const [href, h1] of [
-      ["/privacy-policy/", "Privacy Policy"],
-      ["/refund-policy/", "Refund Policy"],
-      ["/terms-and-conditions/", "Terms and Conditions"],
-    ] as const) {
-      await page.goto(href);
-      await expect(page.getByRole("heading", { level: 1, name: h1 })).toBeVisible();
-      await expect(page.getByText("Draft — awaiting owner and legal review.")).toBeVisible();
-      await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    const parent = (await copy.locator("..").boundingBox())!;
+    // Centred within its bar (±2px) and on one line at every width.
+    expect(Math.abs(box.x + box.width / 2 - (parent.x + parent.width / 2))).toBeLessThanOrEqual(2);
+    expect(box.x + box.width).toBeLessThanOrEqual(vw);
+    for (const href of ["/privacy-policy/", "/refund-policy/", "/terms-and-conditions/"]) {
+      const res = await page.goto(href);
+      expect(res?.status()).toBe(404);
     }
   });
 });
@@ -117,10 +117,10 @@ test.describe("Mobile menu", () => {
     }
   });
 
-  test("WhatsApp and Call live in the menu, not the compact header", async ({ page }) => {
+  test("compact header: no Call or WhatsApp icon in the bar; both in the menu", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator('header a[href="tel:+94712259699"]:visible')).toHaveCount(0);
-    await expect(page.locator('header a[href="https://wa.me/94712259699"]:visible')).toHaveCount(0);
+    await expect(page.locator('header a.header-action[href="tel:+94712259699"]')).toBeHidden();
+    await expect(page.locator('header > div a[href="https://wa.me/94712259699"]:visible')).toHaveCount(0);
     await page.getByRole("button", { name: "Open menu" }).click();
     const dialog = page.getByRole("dialog", { name: "Site menu" });
     await expect(dialog.locator('a[href="tel:+94712259699"]')).toBeVisible();
@@ -147,7 +147,7 @@ test.describe("Home navigation and scroll position", () => {
         } else {
           await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Home", exact: true }).click();
         }
-        await expect(page).toHaveURL(/127\.0\.0\.1:4173\/$/);
+        await expect(page).toHaveURL(HOME);
         await expect(page.locator("h1")).toHaveText(/Your Trusted Partner/);
         await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(5);
         await expect(page.locator("h1")).toBeInViewport();
@@ -160,7 +160,7 @@ test.describe("Home navigation and scroll position", () => {
     await page.evaluate(() => window.scrollTo(0, 1500));
     await page.locator("header a[href='/']").first().click();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(5);
-    await expect(page).toHaveURL(/127\.0\.0\.1:4173\/$/);
+    await expect(page).toHaveURL(HOME);
     if (!isMobile) {
       await page.evaluate(() => window.scrollTo(0, 1500));
       await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Home", exact: true }).click();
@@ -171,12 +171,13 @@ test.describe("Home navigation and scroll position", () => {
   test("browser back/forward and refresh keep the right page", async ({ page }) => {
     await page.goto("/about/");
     await page.locator("header a[href='/']").first().click();
-    await expect(page).toHaveURL(/4173\/$/);
+    await expect(page).toHaveURL(HOME);
     await page.goBack();
     await expect(page).toHaveURL(/\/about\/$/);
-    await expect(page.locator("h1")).toHaveText(/Our Story/);
+    await expect(page.locator("h1")).toHaveText(/About Us/);
+    await expect(page.locator("h2#our-story")).toHaveText(/Our Story/);
     await page.goForward();
-    await expect(page).toHaveURL(/4173\/$/);
+    await expect(page).toHaveURL(HOME);
     await page.reload();
     await expect(page.locator("h1")).toHaveText(/Your Trusted Partner/);
   });

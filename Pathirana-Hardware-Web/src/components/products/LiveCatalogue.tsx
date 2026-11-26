@@ -25,6 +25,7 @@ import {
   type LivePage,
 } from "@/lib/catalogue";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
+import { useDynamicText, useLocale } from "@/i18n/I18nProvider";
 import { LiveProductCard } from "./LiveProductParts";
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -63,6 +64,8 @@ export function LiveCatalogueView({
   urlBrand: string;
 }) {
   const id = useId();
+  const { t, locale } = useLocale();
+  const pick = useDynamicText();
   const [query, setQuery] = useState(urlQuery);
   const [debounced, setDebounced] = useState(urlQuery.trim());
   const [category, setCategory] = useState(urlCategory);
@@ -85,13 +88,13 @@ export function LiveCatalogueView({
   }
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       if (query.trim() !== debounced) {
         setDebounced(query.trim());
         setPage(1);
       }
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [query, debounced]);
 
   // Filter options (published data only); failures leave the lists empty.
@@ -162,7 +165,7 @@ export function LiveCatalogueView({
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,1fr)_14rem_12rem_auto]">
         <form
           role="search"
-          aria-label="Products"
+          aria-label={t("Products")}
           action="/products/"
           method="get"
           onSubmit={(e) => {
@@ -173,7 +176,7 @@ export function LiveCatalogueView({
           className="relative col-span-2 lg:col-span-1"
         >
           <label htmlFor={`${id}-q`} className="sr-only">
-            Search products by name
+            {t("Search products by name")}
           </label>
           <Search
             aria-hidden="true"
@@ -185,7 +188,7 @@ export function LiveCatalogueView({
             type="search"
             autoComplete="off"
             enterKeyHint="search"
-            placeholder="Search products"
+            placeholder={t("Search products")}
             maxLength={80}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -198,14 +201,14 @@ export function LiveCatalogueView({
               className="absolute top-1/2 right-1.5 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-cream-deep"
             >
               <X aria-hidden="true" className="size-4" />
-              <span className="sr-only">Clear search text</span>
+              <span className="sr-only">{t("Clear search text")}</span>
             </button>
           ) : null}
         </form>
 
         <div className="relative min-w-0">
           <label htmlFor={`${id}-cat`} className="sr-only">
-            Filter by category
+            {t("Filter by category")}
           </label>
           <select
             id={`${id}-cat`}
@@ -216,10 +219,10 @@ export function LiveCatalogueView({
             }}
             className={`${control} appearance-none truncate pr-10 pl-4`}
           >
-            <option value="">All Categories</option>
+            <option value="">{t("All Categories")}</option>
             {categories.map((c) => (
               <option key={c.slug} value={c.slug}>
-                {c.name}
+                {pick(c.name, c.translations, "name")}
               </option>
             ))}
             {category && !selectedCategory ? <option value={category}>{category}</option> : null}
@@ -232,7 +235,7 @@ export function LiveCatalogueView({
 
         <div className="relative min-w-0">
           <label htmlFor={`${id}-brand`} className="sr-only">
-            Filter by brand
+            {t("Filter by brand")}
           </label>
           <select
             id={`${id}-brand`}
@@ -243,7 +246,7 @@ export function LiveCatalogueView({
             }}
             className={`${control} appearance-none truncate pr-10 pl-4`}
           >
-            <option value="">All Brands</option>
+            <option value="">{t("All Brands")}</option>
             {brands.map((b) => (
               <option key={b.slug} value={b.slug}>
                 {b.name}
@@ -262,35 +265,38 @@ export function LiveCatalogueView({
           onClick={reset}
           className="col-span-2 inline-flex h-12 items-center justify-center gap-2 rounded-full border border-forest/25 px-5 text-[0.95rem] font-semibold text-forest transition-colors hover:border-brass hover:bg-cream lg:col-span-1"
         >
-          <RotateCcw aria-hidden="true" className="size-4" /> Reset Filters
+          <RotateCcw aria-hidden="true" className="size-4" /> {t("Reset Filters")}
         </button>
       </div>
 
       <p aria-live="polite" className="mt-4 min-h-5 text-sm text-ink-muted">
         {data ? (
           <>
-            {data.total === 1 ? "1 product" : `${data.total} products`}
+            {data.total === 1 ? t("1 product") : t("{n} products", { n: data.total })}
             {selectedCategory ? (
               <>
-                {" "}
-                in <strong className="text-charcoal">{selectedCategory.name}</strong>
+                {" · "}
+                {t("Category:")}{" "}
+                <strong className="text-charcoal">
+                  {pick(selectedCategory.name, selectedCategory.translations, "name")}
+                </strong>
               </>
             ) : null}
             {selectedBrand ? (
               <>
-                {" "}
-                from <strong className="text-charcoal">{selectedBrand.name}</strong>
+                {" · "}
+                {t("Brand:")} <strong className="text-charcoal">{selectedBrand.name}</strong>
               </>
             ) : null}
             {debounced ? (
               <>
-                {" "}
-                matching <strong className="text-charcoal">“{debounced}”</strong>
+                {" · "}
+                {t("Search:")} <strong className="text-charcoal">“{debounced}”</strong>
               </>
             ) : null}
           </>
         ) : state === "loading" ? (
-          "Loading products…"
+          t("Loading products…")
         ) : null}
       </p>
 
@@ -312,25 +318,23 @@ export function LiveCatalogueView({
             ))}
           </ul>
           {pages > 1 ? (
-            <nav aria-label="Product pages" className="mt-8 flex items-center justify-center gap-3">
+            <nav aria-label={t("Product pages")} className="mt-8 flex items-center justify-center gap-3">
               <button
                 type="button"
                 disabled={page <= 1}
                 onClick={() => goTo(page - 1)}
                 className="inline-flex min-h-11 items-center gap-1 rounded-full border border-forest/25 px-4 font-semibold text-forest hover:border-brass hover:bg-white disabled:opacity-40"
               >
-                <ChevronLeft aria-hidden="true" className="size-4" /> Previous
+                <ChevronLeft aria-hidden="true" className="size-4" /> {t("Previous")}
               </button>
-              <span className="text-sm text-ink-muted">
-                Page {page} of {pages}
-              </span>
+              <span className="text-sm text-ink-muted">{t("Page {page} of {pages}", { page, pages })}</span>
               <button
                 type="button"
                 disabled={page >= pages}
                 onClick={() => goTo(page + 1)}
                 className="inline-flex min-h-11 items-center gap-1 rounded-full border border-forest/25 px-4 font-semibold text-forest hover:border-brass hover:bg-white disabled:opacity-40"
               >
-                Next <ChevronRight aria-hidden="true" className="size-4" />
+                {t("Next")} <ChevronRight aria-hidden="true" className="size-4" />
               </button>
             </nav>
           ) : null}
@@ -350,47 +354,52 @@ export function LiveCatalogueView({
             <SearchX aria-hidden="true" className="mx-auto size-9 text-brass-ink" />
           )}
           <h3 className="mt-4 font-display text-2xl text-forest">
-            {state === "error"
-              ? "Product list temporarily unavailable"
-              : state === "empty"
-                ? "Products are being added"
-                : "No matching products"}
+            {t(
+              state === "error"
+                ? "Product list temporarily unavailable"
+                : state === "empty"
+                  ? "Products are being added"
+                  : "No matching products",
+            )}
           </h3>
           <p className="mx-auto mt-3 max-w-lg text-ink-muted">
-            {state === "error"
-              ? "We could not load the product list right now. Please try again in a moment, or call or WhatsApp the store — we are happy to help."
-              : state === "empty"
-                ? "Our online product list is being prepared. Browse the categories above, or call or WhatsApp the store to ask about what you need."
-                : "Nothing matches these filters. The store may still have what you need — call or WhatsApp to ask."}
+            {t(
+              state === "error"
+                ? "We could not load the product list right now. Please try again in a moment, or call or WhatsApp the store — we are happy to help."
+                : state === "empty"
+                  ? "Our online product list is being prepared. Browse the categories above, or call or WhatsApp the store to ask about what you need."
+                  : "Nothing matches these filters. The store may still have what you need — call or WhatsApp to ask.",
+            )}
           </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-semibold">
+          <div className="contact-actions mt-6 text-sm" data-contact-actions>
             <a
-              href={whatsappEnquiryHref(debounced || selectedCategory?.name || "your products")}
+              href={whatsappEnquiryHref(
+                debounced ||
+                  (selectedCategory ? pick(selectedCategory.name, selectedCategory.translations, "name") : "") ||
+                  t("your products"),
+                locale,
+              )}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 text-forest hover:text-brass-ink"
+              className="contact-action text-forest hover:text-brass-ink"
             >
-              <WhatsAppIcon className="size-4" /> Ask on WhatsApp
-              <span className="sr-only"> (opens in a new tab)</span>
+              <WhatsAppIcon className="size-4" /> {t("Ask on WhatsApp")}
+              <span className="sr-only"> {t("(opens in a new tab)")}</span>
             </a>
-            <a href={telHref} className="inline-flex min-h-11 items-center gap-2 text-forest hover:text-brass-ink">
-              <Phone aria-hidden="true" className="size-4" /> Call {business.phone.display}
+            <a href={telHref} className="contact-action text-forest hover:text-brass-ink">
+              <Phone aria-hidden="true" className="size-4" /> {t("Call {phone}", { phone: business.phone.display })}
             </a>
             {state === "error" ? (
               <button
                 type="button"
                 onClick={() => setRetry((n) => n + 1)}
-                className="inline-flex min-h-11 items-center gap-2 text-forest underline underline-offset-4"
+                className="contact-action text-forest underline underline-offset-4"
               >
-                Try again
+                {t("Try again")}
               </button>
             ) : state === "no-match" ? (
-              <button
-                type="button"
-                onClick={reset}
-                className="inline-flex min-h-11 items-center gap-2 text-forest underline underline-offset-4"
-              >
-                Show all products
+              <button type="button" onClick={reset} className="contact-action text-forest underline underline-offset-4">
+                {t("Show all products")}
               </button>
             ) : null}
           </div>

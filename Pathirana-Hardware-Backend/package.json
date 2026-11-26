@@ -55,7 +55,18 @@
     "test:unit": "jest --runInBand --selectProjects unit",
     "test:integration": "jest --runInBand --forceExit --selectProjects integration",
     "db:migrate": "tsx scripts/migrate.ts",
+    "db:check": "tsx scripts/db-check.ts",
+    "db:harden": "tsx scripts/supabase-harden.ts",
+    "db:transfer": "tsx scripts/transfer-data.ts",
+    "db:drop-website": "tsx scripts/drop-website-schema.ts",
+    "storage:setup": "tsx scripts/storage-setup.ts",
+    "storage:migrate-local": "tsx scripts/storage-migrate-local.ts",
+    "start:cloud": "node dist-cloud/main.js",
+    "db:local": "node scripts/local-db.mjs",
     "admin:create": "tsx scripts/create-admin.ts",
+    "owner:code": "tsx scripts/owner-code.ts",
+    "gallery:import": "tsx scripts/import-website-gallery.ts",
+    "seed:starter": "tsx scripts/seed-starter-catalogue.ts",
     "seed:catalogue": "tsx scripts/seed-catalogue.ts",
     "areas:add": "tsx scripts/add-service-areas.ts"
   }

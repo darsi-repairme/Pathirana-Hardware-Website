@@ -4,7 +4,8 @@ import { useId, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, ChevronDown, Phone, RotateCcw, Search, SearchX, X } from "lucide-react";
-import { business, telHref, whatsappEnquiryHref, whatsappProductEnquiryHref } from "@/content/business";
+import { business, telHref, whatsappEnquiryHref } from "@/content/business";
+import { useEnquiryHref, useLocale, useT } from "@/i18n/I18nProvider";
 import {
   documentedBrands,
   getCategory,
@@ -14,6 +15,7 @@ import {
   type ProductType,
 } from "@/content/products";
 import { filterProductTypes, normalizeQuery, searchProducts } from "@/lib/product-search";
+import { whatsappCta } from "@/components/ui/Button";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { ProductTypeVisual } from "./ProductVisual";
 
@@ -44,6 +46,7 @@ export function CatalogueView({ urlQuery, urlCategory }: { urlQuery: string; url
   const [query, setQuery] = useState(urlQuery);
   const [category, setCategory] = useState<Filter>(urlCategory);
   const [brand, setBrand] = useState<BrandFilter>("all");
+  const { t, locale } = useLocale();
 
   // A new header search while on this page updates the URL → adopt it.
   const [seen, setSeen] = useState({ urlQuery, urlCategory });
@@ -74,14 +77,14 @@ export function CatalogueView({ urlQuery, urlCategory }: { urlQuery: string; url
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,1fr)_14rem_12rem_auto]">
         <form
           role="search"
-          aria-label="Products"
+          aria-label={t("Products")}
           action="/products/"
           method="get"
           onSubmit={(e) => e.preventDefault()}
           className="relative col-span-2 lg:col-span-1"
         >
           <label htmlFor={`${id}-q`} className="sr-only">
-            Search products by name
+            {t("Search products by name")}
           </label>
           <Search
             aria-hidden="true"
@@ -93,7 +96,7 @@ export function CatalogueView({ urlQuery, urlCategory }: { urlQuery: string; url
             type="search"
             autoComplete="off"
             enterKeyHint="search"
-            placeholder="Search products"
+            placeholder={t("Search products")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className={`${control} pl-12 ${query ? "pr-12" : "pr-4"} placeholder:text-ink-muted [&::-webkit-search-cancel-button]:appearance-none`}
@@ -105,14 +108,14 @@ export function CatalogueView({ urlQuery, urlCategory }: { urlQuery: string; url
               className="absolute top-1/2 right-1.5 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-cream-deep"
             >
               <X aria-hidden="true" className="size-4" />
-              <span className="sr-only">Clear search text</span>
+              <span className="sr-only">{t("Clear search text")}</span>
             </button>
           ) : null}
         </form>
 
         <div className="relative min-w-0">
           <label htmlFor={`${id}-cat`} className="sr-only">
-            Filter by category
+            {t("Filter by category")}
           </label>
           <select
             id={`${id}-cat`}
@@ -120,10 +123,10 @@ export function CatalogueView({ urlQuery, urlCategory }: { urlQuery: string; url
             onChange={(e) => setCategory(e.target.value as Filter)}
             className={`${control} appearance-none truncate pr-10 pl-4`}
           >
-            <option value="all">All Categories</option>
+            <option value="all">{t("All Categories")}</option>
             {productCategories.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.title}
+                {t(c.title)}
               </option>
             ))}
           </select>
@@ -135,7 +138,7 @@ export function CatalogueView({ urlQuery, urlCategory }: { urlQuery: string; url
 
         <div className="relative min-w-0">
           <label htmlFor={`${id}-brand`} className="sr-only">
-            Filter by brand
+            {t("Filter by brand")}
           </label>
           <select
             id={`${id}-brand`}
@@ -143,7 +146,7 @@ export function CatalogueView({ urlQuery, urlCategory }: { urlQuery: string; url
             onChange={(e) => setBrand(e.target.value as BrandFilter)}
             className={`${control} appearance-none truncate pr-10 pl-4`}
           >
-            <option value="all">All Brands</option>
+            <option value="all">{t("All Brands")}</option>
             {documentedBrands.map((b) => (
               <option key={b} value={b}>
                 {b}
@@ -161,28 +164,28 @@ export function CatalogueView({ urlQuery, urlCategory }: { urlQuery: string; url
           onClick={reset}
           className="col-span-2 inline-flex h-12 items-center justify-center gap-2 rounded-full border border-forest/25 px-5 text-[0.95rem] font-semibold text-forest transition-colors hover:border-brass hover:bg-cream lg:col-span-1"
         >
-          <RotateCcw aria-hidden="true" className="size-4" /> Reset Filters
+          <RotateCcw aria-hidden="true" className="size-4" /> {t("Reset Filters")}
         </button>
       </div>
 
       <p aria-live="polite" className="mt-4 text-sm text-ink-muted">
-        {results.length === 1 ? "1 product" : `${results.length} products`}
+        {results.length === 1 ? t("1 product") : t("{n} products", { n: results.length })}
         {selected ? (
           <>
-            {" "}
-            in <strong className="text-charcoal">{selected.title}</strong>
+            {" · "}
+            {t("Category:")} <strong className="text-charcoal">{t(selected.title)}</strong>
           </>
         ) : null}
         {brand !== "all" ? (
           <>
-            {" "}
-            from <strong className="text-charcoal">{brand}</strong>
+            {" · "}
+            {t("Brand:")} <strong className="text-charcoal">{brand}</strong>
           </>
         ) : null}
         {q ? (
           <>
-            {" "}
-            matching <strong className="text-charcoal">“{q}”</strong>
+            {" · "}
+            {t("Search:")} <strong className="text-charcoal">“{q}”</strong>
           </>
         ) : null}
       </p>
@@ -199,11 +202,16 @@ export function CatalogueView({ urlQuery, urlCategory }: { urlQuery: string; url
       ) : (
         <div className="mt-6 rounded-2xl border border-line/70 bg-white p-8 text-center sm:p-12">
           <SearchX aria-hidden="true" className="mx-auto size-9 text-brass-ink" />
-          <h3 className="mt-4 font-display text-2xl text-forest">No matching products</h3>
+          <h3 className="mt-4 font-display text-2xl text-forest">{t("No matching products")}</h3>
           <p className="mx-auto mt-3 max-w-lg text-ink-muted">
             {brand !== "all"
-              ? `Individual ${brand} products are not listed online yet. Branded hardware is available to enquire about — ask the store.`
-              : "Only documented product types are listed online. The store may still have what you need — call or WhatsApp to ask."}
+              ? t(
+                  "Individual {brand} products are not listed online yet. Branded hardware is available to enquire about — ask the store.",
+                  { brand },
+                )
+              : t(
+                  "Only documented product types are listed online. The store may still have what you need — call or WhatsApp to ask.",
+                )}
           </p>
           {brand !== "all" || relatedCategories.length > 0 || selected ? (
             <ul className="mt-6 flex flex-wrap justify-center gap-3">
@@ -220,34 +228,33 @@ export function CatalogueView({ urlQuery, urlCategory }: { urlQuery: string; url
                     href={`/products/categories/${c.id}/`}
                     className="inline-flex min-h-11 items-center gap-2 rounded-full border border-forest/25 px-5 font-semibold text-forest hover:border-brass hover:bg-cream"
                   >
-                    View {c.title}
+                    {t("View {name}", { name: t(c.title) })}
                     <ArrowRight aria-hidden="true" className="size-4" />
                   </Link>
                 </li>
               ))}
             </ul>
           ) : null}
-          <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-semibold">
+          <div className="contact-actions mt-6 text-sm" data-contact-actions>
             <a
               href={whatsappEnquiryHref(
-                brand !== "all" ? `${brand} products` : q || selected?.title || "your products",
+                brand !== "all"
+                  ? t("{brand} products", { brand })
+                  : q || (selected ? t(selected.title) : "") || t("your products"),
+                locale,
               )}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 text-forest hover:text-brass-ink"
+              className="contact-action text-forest hover:text-brass-ink"
             >
-              <WhatsAppIcon className="size-4" /> Ask on WhatsApp
-              <span className="sr-only"> (opens in a new tab)</span>
+              <WhatsAppIcon className="size-4" /> {t("Ask on WhatsApp")}
+              <span className="sr-only"> {t("(opens in a new tab)")}</span>
             </a>
-            <a href={telHref} className="inline-flex min-h-11 items-center gap-2 text-forest hover:text-brass-ink">
-              <Phone aria-hidden="true" className="size-4" /> Call {business.phone.display}
+            <a href={telHref} className="contact-action text-forest hover:text-brass-ink">
+              <Phone aria-hidden="true" className="size-4" /> {t("Call {phone}", { phone: business.phone.display })}
             </a>
-            <button
-              type="button"
-              onClick={reset}
-              className="inline-flex min-h-11 items-center gap-2 text-forest underline underline-offset-4"
-            >
-              Show all products
+            <button type="button" onClick={reset} className="contact-action text-forest underline underline-offset-4">
+              {t("Show all products")}
             </button>
           </div>
         </div>
@@ -261,6 +268,9 @@ export function CatalogueView({ urlQuery, urlCategory }: { urlQuery: string; url
  * equal-size "Enquire on WhatsApp" button. No prices, stock or cart.
  */
 function ProductListingCard({ product }: { product: ProductType }) {
+  const t = useT();
+  const enquiryHref = useEnquiryHref();
+  const name = t(product.name);
   return (
     <article className="zoom-img group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line/70 bg-white shadow-[var(--shadow-card)] transition-[transform,box-shadow,border-color] duration-500 ease-[var(--ease-out-soft)] hover:-translate-y-1 hover:border-brass/40 hover:shadow-[var(--shadow-lift)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       <div className="relative aspect-[16/10] overflow-hidden bg-forest-900 sm:aspect-[4/3]">
@@ -277,19 +287,19 @@ function ProductListingCard({ product }: { product: ProductType }) {
             href={`/products/${product.slug}/`}
             className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
           >
-            {product.name}
+            {name}
           </Link>
         </h3>
-        <p className="mt-1.5 text-[0.95rem] leading-relaxed text-ink-muted">{product.summary}</p>
+        <p className="mt-1.5 text-[0.95rem] leading-relaxed text-ink-muted">{t(product.summary)}</p>
         <div className="mt-auto pt-4">
           <a
-            href={whatsappProductEnquiryHref(product.enquiryName)}
+            href={enquiryHref({ name, price: null, path: `/products/${product.slug}/` })}
             target="_blank"
             rel="noopener noreferrer"
-            className="relative z-10 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#177a42] px-4 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#11653a]"
+            className={whatsappCta}
           >
-            <WhatsAppIcon className="size-4" /> Enquire on WhatsApp
-            <span className="sr-only"> about {product.name} (opens in a new tab)</span>
+            <WhatsAppIcon className="size-4" /> {t("Enquire on WhatsApp")}
+            <span className="sr-only"> {t("about {name} (opens in a new tab)", { name })}</span>
           </a>
         </div>
       </div>

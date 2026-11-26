@@ -1,4 +1,3 @@
-import { createReadStream } from "node:fs";
 import {
   BadRequestException,
   Body,
@@ -20,13 +19,27 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from "class-validator";
+import { Type } from "class-transformer";
+import {
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+  ValidateNested,
+} from "class-validator";
 import type { Response } from "express";
 import type { AuthStaff } from "../auth/auth.service";
 import { RequirePermission } from "../auth/roles";
 import { CurrentStaff, StaffAuthGuard } from "../auth/staff-auth.guard";
 import { StatusBody } from "../common/dto";
 import { slugify } from "../common/text";
+import { CATEGORY_TEXT, CategoryTranslations, cleanTranslations } from "../common/translations";
 import { buildUpdate } from "../common/update";
 import { AuditService } from "../database/audit.service";
 import { DatabaseService } from "../database/database.service";
@@ -39,14 +52,34 @@ export class CreateCategoryBody {
   @IsString() @MinLength(1) @MaxLength(120) name!: string;
   @IsOptional() @Matches(SLUG) @MaxLength(80) slug?: string;
   @IsOptional() @IsString() @MaxLength(2000) description?: string;
-  @IsOptional() @IsInt() @Min(-1000) @Max(1000) sortOrder?: number;
+  @IsOptional()
+  @IsInt({ message: "Display order must be a whole number (0 or more)." })
+  @Min(0, { message: "Display order must be a whole number (0 or more)." })
+  @Max(9999, { message: "Display order must be 9999 or less." })
+  sortOrder?: number;
+  /** Staff-entered Tamil / Sinhala name and description (migration 0006). */
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => CategoryTranslations)
+  translations?: CategoryTranslations;
 }
 
 export class UpdateCategoryBody {
   @IsOptional() @IsString() @MinLength(1) @MaxLength(120) name?: string;
   @IsOptional() @Matches(SLUG) @MaxLength(80) slug?: string;
   @IsOptional() @IsString() @MaxLength(2000) description?: string;
-  @IsOptional() @IsInt() @Min(-1000) @Max(1000) sortOrder?: number;
+  @IsOptional()
+  @IsInt({ message: "Display order must be a whole number (0 or more)." })
+  @Min(0, { message: "Display order must be a whole number (0 or more)." })
+  @Max(9999, { message: "Display order must be 9999 or less." })
+  sortOrder?: number;
+  /** Replaces all translations of this category. */
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => CategoryTranslations)
+  translations?: CategoryTranslations;
 }
 
 export class CategoryImageBody {
@@ -55,6 +88,8 @@ export class CategoryImageBody {
 
 class ImageQuery {
   @IsOptional() @IsIn(["full", "thumb"]) size?: ImageSize;
+  /** Cache-buster the Admin adds when an image is replaced (?v=…); not used by the server. */
+  @IsOptional() @IsString() @MaxLength(100) v?: string;
 }
 
 const ADMIN_COLUMNS = CATEGORY_COLUMNS;
@@ -73,13 +108,14 @@ export class CategoriesService {
       slug: string;
       name: string;
       description: string | null;
+      translations: Record<string, unknown>;
       productCount: number;
       key: string | null;
       w: number;
       h: number;
       alt: string;
     }>(
-      `SELECT c.slug, c.name, c.description,
+      `SELECT c.slug, c.name, c.description, c.translations,
               (SELECT count(*)::int FROM products p WHERE p.category_id = c.id AND p.is_published) AS "productCount",
               c.image_key AS key, c.image_width AS w, c.image_height AS h, c.image_alt AS alt
          FROM categories c WHERE c.is_active ORDER BY c.sort_order, c.name`,
@@ -106,8 +142,15 @@ export class CategoriesService {
     const slug = body.slug ?? slugify(body.name);
     if (!slug) throw new BadRequestException("Could not create a slug from this name; provide one.");
     const row = await this.db.one<{ id: string }>(
-      `INSERT INTO categories (name, slug, description, sort_order) VALUES ($1, $2, $3, $4) RETURNING ${ADMIN_COLUMNS}`,
-      [body.name.trim(), slug, body.description ?? null, body.sortOrder ?? 0],
+      `INSERT INTO categories (name, slug, description, sort_order, translations)
+       VALUES ($1, $2, $3, $4, $5) RETURNING ${ADMIN_COLUMNS}`,
+      [
+        body.name.trim(),
+        slug,
+        body.description ?? null,
+        body.sortOrder ?? 0,
+        JSON.stringify(cleanTranslations(body.translations, CATEGORY_TEXT)),
+      ],
     );
     await this.audit.log(staff.id, "category.create", "category", row!.id, { name: body.name, slug });
     return row;
@@ -115,12 +158,19 @@ export class CategoriesService {
 
   async update(id: string, body: UpdateCategoryBody, staff: AuthStaff) {
     const { set, params, changed } = buildUpdate(
-      { ...body },
+      {
+        ...body,
+        translations:
+          body.translations === undefined
+            ? undefined
+            : JSON.stringify(cleanTranslations(body.translations, CATEGORY_TEXT)),
+      },
       {
         name: "name",
         slug: "slug",
         description: "description",
         sortOrder: "sort_order",
+        translations: "translations",
       },
     );
     const row = await this.db.one(`UPDATE categories SET ${set} WHERE id = $1 RETURNING ${ADMIN_COLUMNS}`, [
@@ -167,7 +217,7 @@ export class PublicCategoryImagesController {
     const file = await this.media.publicCategoryImage(key, q.size ?? "full");
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("Cache-Control", "public, max-age=3600");
-    return new StreamableFile(createReadStream(file), { type: "image/webp" });
+    return new StreamableFile(file, { type: "image/webp" });
   }
 }
 
@@ -245,6 +295,6 @@ export class AdminCategoriesController {
   ) {
     const file = await this.media.staffCategoryImage(id, q.size ?? "full");
     res.setHeader("Cache-Control", "private, no-store");
-    return new StreamableFile(createReadStream(file), { type: "image/webp" });
+    return new StreamableFile(file, { type: "image/webp" });
   }
 }

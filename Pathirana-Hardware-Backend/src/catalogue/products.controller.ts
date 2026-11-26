@@ -1,12 +1,9 @@
-import { createReadStream } from "node:fs";
-import { access } from "node:fs/promises";
 import {
   Body,
   Controller,
   Delete,
   Get,
   HttpCode,
-  NotFoundException,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -54,6 +51,8 @@ class DeleteProductBody {
 
 class ImageQuery {
   @IsOptional() @IsIn(["full", "thumb"]) size?: ImageSize;
+  /** Cache-buster the Admin adds when an image is replaced (?v=…); not used by the server. */
+  @IsOptional() @IsString() @MaxLength(100) v?: string;
 }
 
 class SlugParam {
@@ -87,14 +86,9 @@ export class PublicProductImagesController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const file = await this.images.publicFile(id, q.size ?? "full");
-    try {
-      await access(file);
-    } catch {
-      throw new NotFoundException("Image not found.");
-    }
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("Cache-Control", "public, max-age=3600");
-    return new StreamableFile(createReadStream(file), { type: "image/webp" });
+    return new StreamableFile(file, { type: "image/webp" });
   }
 }
 
@@ -194,13 +188,8 @@ export class AdminProductsController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const file = await this.images.staffFile(id, imageId, q.size ?? "full");
-    try {
-      await access(file);
-    } catch {
-      throw new NotFoundException("Image not found.");
-    }
     res.setHeader("Cache-Control", "private, no-store");
-    return new StreamableFile(createReadStream(file), { type: "image/webp" });
+    return new StreamableFile(file, { type: "image/webp" });
   }
 
   @Delete(":id/images/:imageId")

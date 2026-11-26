@@ -18,6 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const detail = [
     ...productCategories.map((c) => `/products/categories/${c.id}/`),
     ...productTypes.map((p) => `/products/${p.slug}/`),
+    "/services/all/",
     ...services.map((s) => `/services/${s.id}/`),
   ];
   return [

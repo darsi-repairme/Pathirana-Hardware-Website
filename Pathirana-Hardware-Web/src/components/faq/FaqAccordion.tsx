@@ -1,5 +1,6 @@
 import { ChevronDown, type LucideIcon } from "lucide-react";
 import type { FaqItem } from "@/content/faq";
+import { T } from "@/i18n/I18nProvider";
 
 /**
  * Accessible accordion built on native <details>/<summary>: keyboard
@@ -52,7 +53,7 @@ export function FaqAccordion({
                   </span>
                 ) : null}
                 <Heading className="text-[1.05rem] leading-snug font-semibold text-charcoal sm:text-lg">
-                  {item.question}
+                  <T>{item.question}</T>
                 </Heading>
               </span>
               <span
@@ -67,7 +68,9 @@ export function FaqAccordion({
                 rows ? `pb-6 ${Icon ? "pl-[3.4rem] sm:pl-[3.65rem]" : "px-1 sm:px-2"} pr-1` : "px-5 pb-6 sm:px-7"
               }
             >
-              <p className="max-w-3xl border-l-2 border-brass pl-4 leading-relaxed text-ink-muted">{item.answer}</p>
+              <p className="max-w-3xl border-l-2 border-brass pl-4 leading-relaxed text-ink-muted">
+                <T>{item.answer}</T>
+              </p>
             </div>
           </details>
         );

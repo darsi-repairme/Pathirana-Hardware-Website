@@ -4,8 +4,10 @@ import Image from "next/image";
 import { useMemo, useState, type FormEvent } from "react";
 import { Award, ImageUp, Pencil, Plus } from "lucide-react";
 import { api, ApiError, brandLogoUrl, uploadFile, type Brand } from "@/lib/api";
+import { required, useValidation, type Rules } from "@/lib/useValidation";
 import { MediaUploadDialog } from "@/components/MediaUploadDialog";
 import { useApi } from "@/lib/useApi";
+import { useOpenNew } from "@/lib/useOpenNew";
 import {
   Alert,
   Badge,
@@ -32,6 +34,14 @@ const LOGOS: Record<string, { src: string; w: number; h: number }> = {
 
 type Form = { name: string; slug: string };
 
+const BRAND_RULES: Rules<{ name: string; slug: string }> = {
+  name: required("the brand name"),
+  slug: (v) =>
+    !String(v ?? "").trim() || /^[a-z0-9]+(-[a-z0-9]+)*$/.test(String(v).trim())
+      ? null
+      : "Use lowercase letters, digits and single hyphens (e.g. pe-plus).",
+};
+
 export default function BrandsPage() {
   const list = useApi<{ items: Brand[] }>("admin/brands");
   const items = list.data?.items ?? null;
@@ -40,6 +50,7 @@ export default function BrandsPage() {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Brand | "new" | null>(null);
   const [form, setForm] = useState<Form>({ name: "", slug: "" });
+  const v = useValidation(form, BRAND_RULES);
   const [formError, setFormError] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
   const [toggle, setToggle] = useState<Brand | null>(null);
@@ -56,11 +67,14 @@ export default function BrandsPage() {
   const open = (b: Brand | "new") => {
     setEditing(b);
     setFormError(null);
+    v.reset();
     setForm(b === "new" ? { name: "", slug: "" } : { name: b.name, slug: b.slug });
   };
+  useOpenNew(() => open("new"));
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
+    if (!v.validateAll()) return;
     setSaving(true);
     setFormError(null);
     const body = { name: form.name.trim(), ...(form.slug.trim() ? { slug: form.slug.trim() } : {}) };
@@ -157,9 +171,7 @@ export default function BrandsPage() {
                         className="h-14 w-auto max-w-[80%] object-contain"
                       />
                     ) : (
-                      <span className="px-3 text-center font-display text-xl font-semibold text-forest/70">
-                        {b.name}
-                      </span>
+                      <span className="px-3 text-center font-display text-xl font-semibold text-forest">{b.name}</span>
                     )}
                     <span className="absolute right-1.5 bottom-1 text-[0.65rem] font-semibold text-ink-muted">
                       {uploaded ? "Uploaded logo" : logo ? "Original file (website)" : "No logo — name shown"}
@@ -172,7 +184,7 @@ export default function BrandsPage() {
                     </div>
                     {b.isActive ? <Badge tone="green">Active</Badge> : <Badge>Inactive</Badge>}
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="row-actions mt-4 justify-start">
                     <Button
                       variant="outline"
                       size="sm"
@@ -223,7 +235,7 @@ export default function BrandsPage() {
           </>
         }
       >
-        <form id="brand-form" onSubmit={save} className="space-y-4">
+        <form id="brand-form" noValidate onSubmit={save} className="space-y-4">
           {formError ? (
             <Alert>
               {formError.message}
@@ -236,13 +248,13 @@ export default function BrandsPage() {
               ) : null}
             </Alert>
           ) : null}
-          <Field label="Name" required>
+          <Field label="Name" required error={v.error("name")}>
             {(p) => (
               <Input
                 {...p}
-                required
                 maxLength={120}
                 value={form.name}
+                onBlur={v.blur("name")}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             )}
@@ -250,13 +262,14 @@ export default function BrandsPage() {
           <Field
             label="URL slug"
             hint="Optional. Created from the name when left empty (PE+ → pe-plus, Würth → wurth)."
+            error={v.error("slug")}
           >
             {(p) => (
               <Input
                 {...p}
                 maxLength={80}
-                pattern="[a-z0-9]+(-[a-z0-9]+)*"
                 value={form.slug}
+                onBlur={v.blur("slug")}
                 onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase() })}
               />
             )}
@@ -276,12 +289,13 @@ export default function BrandsPage() {
         }
         hint="Use the brand's original logo file (PNG with transparency works best). It is stored without quality loss, never recoloured or cropped; JPEG, PNG or WebP, up to 5 MB."
         onUpload={async (file, _alt, onProgress) => {
-          await uploadFile(`admin/brands/${media!.id}/logo`, file, {}, onProgress);
+          setMedia(await uploadFile<Brand>(`admin/brands/${media!.id}/logo`, file, {}, onProgress));
           setNotice(`Logo for “${media!.name}” saved.`);
           load();
         }}
         onRemove={async () => {
           await api.del(`admin/brands/${media!.id}/logo`);
+          setMedia({ ...media!, logoKey: null });
           setNotice(`Logo for “${media!.name}” removed.`);
           load();
         }}

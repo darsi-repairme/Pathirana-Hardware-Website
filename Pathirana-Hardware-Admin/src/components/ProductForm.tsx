@@ -2,6 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { DeleteProductCard } from "./DeleteProductCard";
+import {
+  emptyTranslationForm,
+  fromTranslationForm,
+  toTranslationForm,
+  TranslationFields,
+  type TranslationForm,
+} from "./TranslationFields";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ImagePlus, Pencil, Save, Star, Trash2, Upload } from "lucide-react";
 import {
@@ -16,6 +23,7 @@ import {
   type PricePreview,
   type Product,
 } from "@/lib/api";
+import { colomboToday, notPast } from "@/lib/useValidation";
 import {
   AVAILABILITY_LABEL,
   DISCOUNT_STATUS_LABEL,
@@ -50,7 +58,19 @@ type Form = PriceForm & {
   unit: string;
   availability: Availability;
   published: boolean;
+  translations: TranslationForm;
 };
+
+/** Changed discount dates must be today or later (Sri Lanka); unchanged stored dates stay valid. */
+function pastDiscountDates(f: Form, stored: { start: string; end: string }): Record<string, string> {
+  if (f.discountType === "none") return {};
+  const out: Record<string, string> = {};
+  const start = notPast("discount start date", stored.start)(f.discountStartsOn);
+  const end = notPast("discount end date", stored.end)(f.discountEndsOn);
+  if (start) out.discountStartsOn = start;
+  if (end) out.discountEndsOn = end;
+  return out;
+}
 
 const EMPTY: Form = {
   name: "",
@@ -71,11 +91,14 @@ const EMPTY: Form = {
   discountEndsOn: "",
   availability: "on_request",
   published: false,
+  translations: emptyTranslationForm(),
 };
 
 const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
 /** Matches the API default (MAX_UPLOAD_MB=5); the API enforces its own limit too. */
 const MAX_BYTES = 5 * 1024 * 1024;
+/** Smallest accepted product image (shorter side, px), same as the API's PRODUCT_IMAGE_MIN_SIDE. */
+const MIN_IMAGE_SIDE = 400;
 
 /** Request body for the price fields (empty → null; the API recalculates everything). */
 const pricingBody = (f: Form) => ({
@@ -98,12 +121,16 @@ export function ProductForm({ productId, created = false }: { productId?: string
   const [brands, setBrands] = useState<Brand[]>([]);
   const [product, setProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<Form | null>(productId ? null : EMPTY);
+  /** Stored discount dates (an unchanged older date stays valid; changed dates must be today or later). */
+  const [storedDates, setStoredDates] = useState({ start: "", end: "" });
+  const today = colomboToday();
   const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [notice, setNotice] = useState<string | null>(
     created ? "Product created as a draft. Add images, then publish it when it is ready." : null,
   );
   const [saving, setSaving] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
   const [nonce, setNonce] = useState(0);
   const load = () => setNonce((n) => n + 1);
 
@@ -122,6 +149,7 @@ export function ProductForm({ productId, created = false }: { productId?: string
         setBrands(b.items);
         if (p) {
           setProduct(p);
+          setStoredDates({ start: p.discountStartsOn ?? "", end: p.discountEndsOn ?? "" });
           setForm({
             name: p.name,
             slug: p.slug,
@@ -140,6 +168,7 @@ export function ProductForm({ productId, created = false }: { productId?: string
             discountEndsOn: p.discountEndsOn ?? "",
             availability: p.availability,
             published: p.isPublished,
+            translations: toTranslationForm(p.translations),
           });
         }
       })
@@ -149,16 +178,36 @@ export function ProductForm({ productId, created = false }: { productId?: string
     };
   }, [productId, nonce]);
 
-  const errors = form ? priceFormErrors(form) : {};
+  const allErrors: Record<string, string> = form
+    ? {
+        ...priceFormErrors(form),
+        ...(form.name.trim() ? {} : { name: "Enter the product name." }),
+        ...pastDiscountDates(form, storedDates),
+      }
+    : {};
+  // Validation timing: errors show after the field is left (blur) or on Submit, never while
+  // a fresh form is being filled in; once shown they update live and clear when fixed.
+  const [touched, setTouched] = useState<Record<string, true>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const touch = (k: string) => () => setTouched((t) => (t[k] ? t : { ...t, [k]: true }));
+  const errors = Object.fromEntries(Object.entries(allErrors).filter(([k]) => submitted || touched[k])) as ReturnType<
+    typeof priceFormErrors
+  > & { name?: string };
+  /** The API supports translations once migration 0006 is applied (records then carry the field). */
+  const translationsSupported = product
+    ? product.translations !== undefined
+    : Boolean(categories?.some((c) => c.translations !== undefined));
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form) return;
+    if (!form || saving) return; // one save at a time (e.g. Enter pressed twice)
     setError(null);
     setNotice(null);
-    const problems = Object.values(errors);
+    setSubmitted(true);
+    const problems = Object.values(allErrors);
     if (problems.length) {
-      setError(new ApiError(400, "Please correct the price and discount details.", problems));
+      setError(new ApiError(400, "Please correct the highlighted fields.", problems));
+      requestAnimationFrame(() => document.querySelector<HTMLElement>("[aria-invalid='true']")?.focus());
       return;
     }
     setSaving(true);
@@ -176,24 +225,42 @@ export function ProductForm({ productId, created = false }: { productId?: string
       unit: form.unit.trim() || null,
       availability: form.availability,
       ...pricingBody(form),
+      ...(translationsSupported ? { translations: fromTranslationForm(form.translations, ["searchTerms"]) } : {}),
     };
     try {
       if (!productId) {
         const created = await api.post<Product>("admin/products", body);
-        if (form.published) await api.patch(`admin/products/${created.id}/publication`, { published: true });
-        router.replace(`/products/${created.id}/edit?created=1`);
-        return;
+        // The product now exists: from here on never show the form again for a second "Save"
+        // (that would add a duplicate). If publishing fails, the list says so.
+        const published = form.published
+          ? await api.patch(`admin/products/${created.id}/publication`, { published: true }).then(
+              () => true,
+              () => false,
+            )
+          : true;
+        // Add Product → saved → back to the Products list (which confirms and highlights it).
+        router.replace(`/products?created=${encodeURIComponent(created.name)}${published ? "" : "&publishFailed=1"}`);
+        return; // Save stays disabled while the list opens.
       }
       let saved = await api.patch<Product>(`admin/products/${productId}`, body);
       if (form.published !== saved.isPublished) {
         saved = await api.patch<Product>(`admin/products/${productId}/publication`, { published: form.published });
       }
       setProduct(saved);
-      setNotice("Changes saved.");
+      // Edit Product → saved → back to the Products list (which confirms the save).
+      router.push(`/products?saved=${encodeURIComponent(saved.name)}`);
+      return; // Save stays disabled while the list opens.
     } catch (err) {
-      setError(err as ApiError);
-    } finally {
+      const e = err as ApiError;
+      // Network failure or server error: a plain message (validation errors keep their details).
+      setError(
+        e.status === 0 || e.status >= 500 || !(e instanceof ApiError)
+          ? new ApiError(e.status ?? 0, "Unable to save product. Please try again.")
+          : e,
+      );
       setSaving(false);
+      // The message is at the top of a long form: bring it into view (Save is at the bottom).
+      requestAnimationFrame(() => errorRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }));
     }
   };
 
@@ -216,26 +283,42 @@ export function ProductForm({ productId, created = false }: { productId?: string
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-      <form onSubmit={save} noValidate={false} className="min-w-0 space-y-6">
+      <form
+        onSubmit={save}
+        noValidate={false}
+        // A new Save that the browser's own checks block (e.g. an end date before the start date)
+        // never reaches save(): remove the previous attempt's message so it is not shown as current.
+        onInvalidCapture={() => setError(null)}
+        className="min-w-0 space-y-6"
+      >
         {notice ? <Alert tone="success">{notice}</Alert> : null}
         {error ? (
-          <Alert>
-            {error.message}
-            {error.details.length ? (
-              <ul className="mt-1 list-disc pl-4">
-                {error.details.map((d) => (
-                  <li key={d}>{d}</li>
-                ))}
-              </ul>
-            ) : null}
-          </Alert>
+          <div ref={errorRef} className="scroll-mt-24">
+            <Alert>
+              {error.message}
+              {error.details.length ? (
+                <ul className="mt-1 list-disc pl-4">
+                  {error.details.map((d) => (
+                    <li key={d}>{d}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </Alert>
+          </div>
         ) : null}
 
         <Card className="space-y-4 p-5 sm:p-6">
           <h2 className="font-display text-lg font-semibold text-forest">Product details</h2>
-          <Field label="Product name" required>
+          <Field label="Product name" required error={errors.name}>
             {(p) => (
-              <Input {...p} required maxLength={160} value={form.name} onChange={(e) => set("name", e.target.value)} />
+              <Input
+                {...p}
+                required
+                maxLength={160}
+                value={form.name}
+                onBlur={touch("name")}
+                onChange={(e) => set("name", e.target.value)}
+              />
             )}
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -286,6 +369,30 @@ export function ProductForm({ productId, created = false }: { productId?: string
           >
             {(p) => <Input {...p} value={form.searchTerms} onChange={(e) => set("searchTerms", e.target.value)} />}
           </Field>
+          {translationsSupported ? (
+            <TranslationFields
+              value={form.translations}
+              onChange={(t) => set("translations", t)}
+              fields={[
+                { key: "name", label: "Product name", english: form.name, maxLength: 160 },
+                { key: "summary", label: "Short summary", english: form.summary, maxLength: 300 },
+                {
+                  key: "description",
+                  label: "Description",
+                  english: form.description,
+                  multiline: true,
+                  maxLength: 5000,
+                },
+                {
+                  key: "searchTerms",
+                  label: "Search words",
+                  english: form.searchTerms,
+                  maxLength: 1500,
+                  hint: "Comma-separated.",
+                },
+              ]}
+            />
+          ) : null}
         </Card>
 
         <Card className="space-y-5 p-5 sm:p-6">
@@ -367,7 +474,7 @@ export function ProductForm({ productId, created = false }: { productId?: string
               error={errors.priceLkr}
               hint={
                 form.contactForPrice
-                  ? "Optional. Kept for staff only — customers see “Contact for Price”."
+                  ? "Pricing is handled through enquiry: customers see “Contact for Price”. A previously saved price is kept for staff only and returns if you switch back to a fixed price."
                   : "The original price, e.g. 2500.00"
               }
             >
@@ -380,7 +487,10 @@ export function ProductForm({ productId, created = false }: { productId?: string
                     {...p}
                     inputMode="decimal"
                     autoComplete="off"
-                    className="pl-12"
+                    className="pl-12 disabled:cursor-not-allowed disabled:bg-cream disabled:text-ink-muted"
+                    disabled={form.contactForPrice}
+                    placeholder={form.contactForPrice ? "Contact for Price" : "0.00"}
+                    onBlur={touch("priceLkr")}
                     value={form.priceLkr}
                     onChange={(e) => set("priceLkr", e.target.value.replace(/[,\s]/g, ""))}
                   />
@@ -398,7 +508,7 @@ export function ProductForm({ productId, created = false }: { productId?: string
               <p className="text-sm text-ink-muted">Discounts are not shown for Contact for Price products.</p>
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Discount type">
+              <Field label="Discount type" optional={false}>
                 {(p) => (
                   <Select
                     {...p}
@@ -426,6 +536,7 @@ export function ProductForm({ productId, created = false }: { productId?: string
                     autoComplete="off"
                     disabled={noDiscount}
                     value={noDiscount ? "" : form.discountValue}
+                    onBlur={touch("discountValue")}
                     onChange={(e) => set("discountValue", e.target.value.replace(/[,\s%]/g, ""))}
                   />
                 )}
@@ -437,7 +548,10 @@ export function ProductForm({ productId, created = false }: { productId?: string
                 className="mt-1 size-4 accent-forest"
                 disabled={noDiscount}
                 checked={!noDiscount && form.discountEnabled}
-                onChange={(e) => set("discountEnabled", e.target.checked)}
+                onChange={(e) => {
+                  set("discountEnabled", e.target.checked);
+                  touch("discountEnabled")();
+                }}
               />
               <span>
                 <span className="block font-semibold text-charcoal">Discount enabled</span>
@@ -450,13 +564,19 @@ export function ProductForm({ productId, created = false }: { productId?: string
               </span>
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Start date" hint="Optional (Sri Lanka time).">
+              <Field
+                label="Start date"
+                hint="Optional (Sri Lanka time). Today or later."
+                error={(errors as Record<string, string | undefined>).discountStartsOn}
+              >
                 {(p) => (
                   <Input
                     {...p}
                     type="date"
                     disabled={noDiscount}
+                    min={storedDates.start && storedDates.start < today ? storedDates.start : today}
                     value={form.discountStartsOn}
+                    onBlur={touch("discountStartsOn")}
                     onChange={(e) => set("discountStartsOn", e.target.value)}
                   />
                 )}
@@ -467,8 +587,9 @@ export function ProductForm({ productId, created = false }: { productId?: string
                     {...p}
                     type="date"
                     disabled={noDiscount}
-                    min={form.discountStartsOn || undefined}
+                    min={form.discountStartsOn && form.discountStartsOn > today ? form.discountStartsOn : today}
                     value={form.discountEndsOn}
+                    onBlur={touch("discountEndsOn")}
                     onChange={(e) => set("discountEndsOn", e.target.value)}
                   />
                 )}
@@ -538,7 +659,7 @@ export function ProductForm({ productId, created = false }: { productId?: string
       </form>
 
       <aside className="min-w-0 space-y-6">
-        <PricePreviewCard form={form} hasErrors={Object.keys(errors).length > 0} />
+        <PricePreviewCard form={form} hasErrors={Object.keys(allErrors).length > 0} />
         {product ? (
           <ImageManager product={product} onChange={(images) => setProduct({ ...product, images })} />
         ) : (
@@ -671,11 +792,24 @@ function ImageManager({ product, onChange }: { product: Product; onChange: (imag
   /** Server order: main image first. */
   const refresh = async () => onChange((await api.get<Product>(`admin/products/${product.id}`)).images);
 
-  const pick = (f: File | undefined) => {
+  const pick = async (f: File | undefined) => {
     setError(null);
     if (!f) return;
     if (!ACCEPT.includes(f.type)) return setError("Choose a JPEG, PNG or WebP image.");
     if (f.size > MAX_BYTES) return setError("The image is larger than 5 MB. Please choose a smaller file.");
+    // Same minimum as the API (which always checks too): tiny images look blurry on the website.
+    const size = await createImageBitmap(f)
+      .then((b) => {
+        const s = { w: b.width, h: b.height };
+        b.close();
+        return s;
+      })
+      .catch(() => null); // undecodable: the API gives the precise answer
+    if (size && Math.min(size.w, size.h) < MIN_IMAGE_SIDE) {
+      return setError(
+        `Product images must be at least ${MIN_IMAGE_SIDE} × ${MIN_IMAGE_SIDE} pixels (this one is ${size.w} × ${size.h}).`,
+      );
+    }
     if (preview) URL.revokeObjectURL(preview);
     setFile(f);
     setPreview(URL.createObjectURL(f));
@@ -831,7 +965,7 @@ function ImageManager({ product, onChange }: { product: Product; onChange: (imag
             type="file"
             accept={ACCEPT.join(",")}
             className="sr-only"
-            onChange={(e) => pick(e.target.files?.[0])}
+            onChange={(e) => void pick(e.target.files?.[0])}
           />
         </label>
         {file ? (

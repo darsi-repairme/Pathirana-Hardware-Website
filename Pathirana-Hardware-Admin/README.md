@@ -25,11 +25,18 @@ The API must be running (default `http://127.0.0.1:4000`).
   site. Together with the `SameSite=Strict` cookie, this blocks cross-site requests.
 - `src/proxy.ts` sends visitors without a session to `/login`. The `(admin)` layout validates
   the session with the API on every page load, and the API enforces roles on every call.
-- Sign out (`DELETE /api/session`) revokes **all** of the account's tokens on the API.
+- Sign out (`DELETE /api/session`) revokes **all** of the account's tokens on the API. If the API
+  cannot confirm that (busy/unreachable), the cookie is still cleared on this device and the page
+  says that other devices could not be signed out (503 `{ revoked: false }`).
 - When an API call returns 401, the cookie is cleared and the visitor returns to `/login`.
+  `/api/session/expired` clears the cookie only for a same-site navigation whose session the API
+  confirms is invalid, so other websites cannot sign staff out.
+- `ADMIN_CLIENT_SECRET` (optional, same value as the API's): signed-in devices get a signed
+  HttpOnly `ph_admin_device` cookie, and the Admin signs the client identity it sends to the API,
+  so each staff device has its own sign-in / rate-limit budget even without a reverse proxy.
 - `ADMIN_TRUST_PROXY=true` only behind a trusted reverse proxy. The last `X-Forwarded-For`
-  hop is then forwarded, so the API rate-limits sign-ins per device; the API also needs
-  `TRUST_PROXY=true`.
+  hop is then used as the visitor address (signed for the API when `ADMIN_CLIENT_SECRET` is set;
+  otherwise forwarded as before, which needs `TRUST_PROXY=true` on the API).
 
 ## Screens
 

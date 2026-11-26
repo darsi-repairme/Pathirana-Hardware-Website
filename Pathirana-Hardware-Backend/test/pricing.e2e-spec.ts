@@ -192,10 +192,18 @@ describe("Products: pricing, discounts, availability, images", () => {
     }).expect(200);
     expect(scheduled.body).toMatchObject({ discountStatus: "scheduled", price: { final: "2500.00" } });
 
-    const expired = await patch(pricedId, {
+    // Staff can no longer enter past dates (they get 400); an offer that has run out is simulated
+    // by moving the stored dates into the past, as time would.
+    await patch(pricedId, {
       discountStartsOn: addDays(today, -10),
       discountEndsOn: addDays(today, -1),
-    }).expect(200);
+    }).expect(400);
+    await db.query("UPDATE products SET discount_starts_on = $2, discount_ends_on = $3 WHERE id = $1", [
+      pricedId,
+      addDays(today, -10),
+      addDays(today, -1),
+    ]);
+    const expired = await http.get(`/api/v1/admin/products/${pricedId}`).set(auth).expect(200);
     expect(expired.body).toMatchObject({ discountStatus: "expired", price: { discount: null } });
     expect((await http.get("/api/v1/products/test-priced-item")).body.price.final).toBe("2500.00");
 
@@ -391,6 +399,12 @@ describe("Migration 0002 on a database with existing (0001) data", () => {
         "0002_product_pricing.sql",
         "0003_brand_logos_category_images.sql",
         "0004_quotation_requests.sql",
+        "0005_quotation_notifications.sql",
+        "0006_content_translations.sql",
+        "0007_customer_feedback.sql",
+        "0008_admin_services_gallery_staff.sql",
+        "0009_offers.sql",
+        "0010_staff_profile_photos.sql",
       ]);
       const p = (await db.query("SELECT * FROM products WHERE id = $1", [pid])).rows[0];
       expect(p).toMatchObject({

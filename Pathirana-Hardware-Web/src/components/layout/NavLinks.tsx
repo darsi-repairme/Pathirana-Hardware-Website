@@ -3,6 +3,7 @@
 import { SiteLink } from "@/components/ui/SiteLink";
 import { usePathname } from "next/navigation";
 import { mainNav } from "@/content/navigation";
+import { useT } from "@/i18n/I18nProvider";
 
 /** Supporting pages that belong to a main section (Gallery → About Us, FAQ → Contact Us). */
 const sectionOf: Record<string, string> = { "/gallery": "/about", "/faq": "/contact" };
@@ -19,6 +20,7 @@ export function isActivePath(pathname: string, href: string) {
 /** Desktop navigation with active-page indication. */
 export function NavLinks() {
   const pathname = usePathname() ?? "/";
+  const t = useT();
   return (
     <ul className="flex items-center gap-0.5 xl:gap-1">
       {mainNav.map((item) => {
@@ -32,7 +34,7 @@ export function NavLinks() {
                 active ? "text-gold-soft" : "text-white/85 hover:text-white"
               }`}
             >
-              {item.label}
+              {t(item.label)}
               <span
                 aria-hidden="true"
                 className={`absolute inset-x-2.5 bottom-1.5 h-0.5 origin-left bg-gold-soft transition-transform duration-300 ease-[var(--ease-out-soft)] motion-reduce:transition-none xl:inset-x-3 ${

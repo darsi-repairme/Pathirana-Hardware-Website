@@ -20,7 +20,7 @@ const OG_IMAGE = "/images/brand/og-image.png";
 export function createPageMetadata({ title, description, path }: PageMeta): Metadata {
   const site = getSiteUrl();
   const url = absoluteUrl(path, site);
-  const ogTitle = title ? `${title} | ${business.shortName}` : `${business.legalName} — ${business.tagline}`;
+  const ogTitle = title ? `${title} | ${business.shortName}` : `${business.shortName} — ${business.tagline}`;
   const ogImage = absoluteUrl(OG_IMAGE, site);
 
   return {
@@ -30,13 +30,13 @@ export function createPageMetadata({ title, description, path }: PageMeta): Meta
     openGraph: {
       type: "website",
       locale: "en_LK",
-      siteName: business.legalName,
+      siteName: business.shortName,
       title: ogTitle,
       description,
       ...(url ? { url } : {}),
       ...(ogImage
         ? {
-            images: [{ url: ogImage, width: 1200, height: 630, alt: `${business.legalName} logo` }],
+            images: [{ url: ogImage, width: 1200, height: 630, alt: `${business.shortName} logo` }],
           }
         : {}),
     },

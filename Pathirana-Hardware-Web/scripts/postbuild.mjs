@@ -10,12 +10,18 @@
  *    (nginx / other hosts: see README → Deployment.)
  * 3. Writes build-reports/security-headers.json for reference.
  * 4. Warns if NEXT_PUBLIC_SITE_URL is not set.
+ * (0b. Leaves unused full-size image originals out of the deployed folder.)
  */
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import nextEnv from "@next/env";
 
 const root = path.resolve(import.meta.dirname, "..");
+// Read the same env files `next build` reads (.env.production.local, .env.local, .env.production,
+// .env), so NEXT_PUBLIC_API_URL / NEXT_PUBLIC_SITE_URL set in a file reach the security headers too.
+// Values already set in the shell still win.
+nextEnv.loadEnvConfig(root, false);
 const outDir = path.join(root, process.env.PH_DIST_DIR || "out");
 
 async function* walk(dir) {
@@ -52,6 +58,45 @@ async function flattenSegmentDirs(dir) {
 let flattened = 0;
 await flattenSegmentDirs(outDir);
 if (flattened) console.log(`postbuild: flattened ${flattened} segment-prefetch folder(s) (Windows export workaround).`);
+
+// ── 0b. Leave unused image originals out of the deployment ──────────────────
+// These full-size originals stay in public/images (the source for `npm run assets` and
+// scripts/prepare-brand-assets.mjs), but pages only ever load the optimised copies in
+// images/opt/ (next/image custom loader). A file is kept if any built page, stylesheet or
+// text file refers to it after all. Gallery photos (images/gallery/) are never touched.
+const UNUSED_ORIGINALS = [
+  "pathirana-shop-about.png",
+  "pathirana-hero-helmet-banner.png",
+  "pathirana_footer_header_matching_green.png",
+  "pathirana-logo.png",
+  "pathirana-logo-transparent.png",
+  "pathirana-logo-transparent-light.png",
+];
+{
+  const texts = [];
+  for await (const file of walk(outDir)) {
+    if (/\.(html|css|txt|xml|json|webmanifest)$/.test(file)) texts.push(await readFile(file, "utf8"));
+  }
+  let saved = 0;
+  const removed = [];
+  for (const name of UNUSED_ORIGINALS) {
+    const file = path.join(outDir, "images", name);
+    const size = await stat(file).then(
+      (s) => s.size,
+      () => null,
+    );
+    if (size === null) continue;
+    if (texts.some((t) => t.includes(`/images/${name}`))) {
+      console.warn(`postbuild: kept images/${name} (referenced by a built file).`);
+      continue;
+    }
+    await rm(file);
+    saved += size;
+    removed.push(name);
+  }
+  if (removed.length)
+    console.log(`postbuild: left ${removed.length} unused image original(s) out of the build (${saved} bytes).`);
+}
 
 // ── 1. Inline script hashes ──────────────────────────────────────────────────
 const hashes = new Set();

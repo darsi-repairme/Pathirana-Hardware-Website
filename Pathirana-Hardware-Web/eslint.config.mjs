@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "out-fixtures/**",
     "out-live/**",
+    // Any other build copy (e.g. out-new / out-e2e test builds).
+    "out-*/**",
     "test-results/**",
     "playwright-report/**",
   ]),

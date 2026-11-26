@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   }),
 };
 
+import { T, TRegion } from "@/i18n/I18nProvider";
+
 export default function FaqPage() {
   return (
     <>
@@ -27,13 +29,15 @@ export default function FaqPage() {
         eyebrow="Help"
         title={
           <>
-            Frequently asked <span className="text-gold-soft italic">questions</span>
+            <T>Frequently asked</T> <span className="text-gold-soft italic">{<T>questions</T>}</span>
           </>
         }
         intro={
           <p>
-            Quick answers about our products, services and how to enquire. For anything not covered here — including
-            prices, availability and delivery terms — please contact the store.
+            <T>
+              Quick answers about our products, services and how to enquire. For anything not covered here — including
+              prices, availability and delivery terms — please contact the store.
+            </T>
           </p>
         }
       >
@@ -47,18 +51,18 @@ export default function FaqPage() {
           Chat on WhatsApp
         </Button>
         <Button href={telHref} variant="outlineLight" icon={<Phone />}>
-          Call {business.phone.display}
+          <T vars={{ phone: business.phone.display }}>{"Call {phone}"}</T>
         </Button>
       </PageHero>
 
-      <section aria-label="Questions and answers" className="bg-cream py-16 lg:py-24">
+      <TRegion as="section" label="Questions and answers" className="bg-cream py-16 lg:py-24">
         <Container size="wide">
           <div className="grid gap-10 lg:grid-cols-12 lg:gap-14">
             {/* Topic navigation */}
-            <nav aria-label="FAQ topics" className="lg:col-span-3">
+            <TRegion as="nav" label="FAQ topics" className="lg:col-span-3">
               <div className="rounded-[var(--radius-card)] border border-line/70 bg-white p-5 lg:sticky lg:top-32">
                 <p className="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-brass-ink uppercase">
-                  <CircleHelp aria-hidden="true" className="size-4" /> Topics
+                  <CircleHelp aria-hidden="true" className="size-4" /> <T>Topics</T>
                 </p>
                 <ul className="mt-3 flex flex-wrap gap-2 lg:flex-col lg:gap-1">
                   {faqGroups.map((g) => (
@@ -67,14 +71,14 @@ export default function FaqPage() {
                         href={`#${g.id}`}
                         className="inline-flex min-h-11 items-center rounded-full border border-line-strong px-4 text-sm font-semibold text-forest transition-colors duration-200 hover:border-brass hover:bg-cream lg:w-full lg:rounded-xl lg:border-transparent"
                       >
-                        {g.title}
+                        <T>{g.title}</T>
                         <span className="ml-2 text-xs font-medium text-ink-muted">{g.items.length}</span>
                       </a>
                     </li>
                   ))}
                 </ul>
               </div>
-            </nav>
+            </TRegion>
 
             <div className="space-y-14 lg:col-span-9">
               {faqGroups.map((g) => (
@@ -84,7 +88,7 @@ export default function FaqPage() {
                     className="flex items-center gap-3 font-display text-3xl font-medium text-charcoal sm:text-[2.2rem]"
                   >
                     <span aria-hidden="true" className="h-px w-8 bg-brass" />
-                    {g.title}
+                    <T>{g.title}</T>
                   </h2>
                   <div className="mt-6">
                     <FaqAccordion items={g.items} />
@@ -94,7 +98,7 @@ export default function FaqPage() {
             </div>
           </div>
         </Container>
-      </section>
+      </TRegion>
 
       <EnquiryCta
         eyebrow="Still have a question?"

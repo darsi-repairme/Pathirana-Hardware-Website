@@ -2,9 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Archive, Pencil, Plus, Truck } from "lucide-react";
+import { Archive, ArchiveRestore, Pencil, Plus, Truck } from "lucide-react";
 import { api, ApiError, formatDate, type DeliveryArea } from "@/lib/api";
+import { required, useValidation, type Rules } from "@/lib/useValidation";
 import { useApi } from "@/lib/useApi";
+import { useStaff } from "@/components/AdminShell";
+import {
+  emptyTranslationForm,
+  fromTranslationForm,
+  toTranslationForm,
+  TranslationFields,
+  type TranslationForm,
+} from "@/components/TranslationFields";
 import {
   Alert,
   Badge,
@@ -25,14 +34,43 @@ import {
   th,
 } from "@/components/ui";
 
-type Form = { name: string; district: string; postalCode: string; notes: string; feeLkr: string; isActive: boolean };
-const empty: Form = { name: "", district: "", postalCode: "", notes: "", feeLkr: "", isActive: true };
+type Form = {
+  name: string;
+  district: string;
+  postalCode: string;
+  notes: string;
+  feeLkr: string;
+  isActive: boolean;
+  translations: TranslationForm;
+};
+const empty = (): Form => ({
+  name: "",
+  district: "",
+  postalCode: "",
+  notes: "",
+  feeLkr: "",
+  isActive: true,
+  translations: emptyTranslationForm(),
+});
 type StatusFilter = "all" | "active" | "inactive" | "archived";
 
 const lkr = (n: number) => `LKR ${n.toLocaleString("en-LK", { maximumFractionDigits: 2 })}`;
 
+const AREA_RULES: Rules<Form> = {
+  name: required("the area name"),
+  postalCode: (v) => (!String(v ?? "") || /^\d{5}$/.test(String(v)) ? null : "A postal code has exactly 5 digits."),
+  feeLkr: (v) => {
+    const s = String(v ?? "").trim();
+    if (!s) return null;
+    if (!/^\d{1,7}(\.\d{1,2})?$/.test(s) || Number(s) > 1_000_000)
+      return "Enter an amount from 0 to 1,000,000 with at most 2 decimals, or leave it empty.";
+    return null;
+  },
+};
+
 export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
   const router = useRouter();
+  const isAdmin = useStaff().role === "admin";
   const list = useApi<{ items: DeliveryArea[] }>("admin/delivery-areas?includeArchived=true");
   const items = list.data?.items ?? null;
   const [error, setError] = useState<string | null>(null);
@@ -41,12 +79,15 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
   const [status, setStatus] = useState<StatusFilter>("all");
   const [editing, setEditing] = useState<DeliveryArea | "new" | null>(openNew ? "new" : null);
   const [form, setForm] = useState<Form>(empty);
+  const v = useValidation(form, AREA_RULES);
   const [formError, setFormError] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
-  const [confirm, setConfirm] = useState<{ area: DeliveryArea; action: "toggle" | "archive" } | null>(null);
+  const [confirm, setConfirm] = useState<{ area: DeliveryArea; action: "toggle" | "archive" | "restore" } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = list.reload;
+  /** Translations need migration 0006 (records then carry the field). */
+  const translationsSupported = Boolean(items?.some((a) => a.translations !== undefined));
 
   // Dashboard shortcut (/delivery-areas?new=1) opened the form; tidy the URL.
   useEffect(() => {
@@ -70,9 +111,10 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
   const open = (a: DeliveryArea | "new") => {
     setEditing(a);
     setFormError(null);
+    v.reset();
     setForm(
       a === "new"
-        ? empty
+        ? empty()
         : {
             name: a.name,
             district: a.district ?? "",
@@ -80,12 +122,14 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
             notes: a.notes ?? "",
             feeLkr: a.feeLkr === null ? "" : String(a.feeLkr),
             isActive: a.isActive,
+            translations: toTranslationForm(a.translations),
           },
     );
   };
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
+    if (!v.validateAll()) return;
     setSaving(true);
     setFormError(null);
     const fee = form.feeLkr.trim();
@@ -96,6 +140,7 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
       notes: form.notes.trim() || null,
       feeLkr: fee === "" ? null : Number(fee),
       ...(editing === "new" ? { isActive: form.isActive } : {}),
+      ...(translationsSupported ? { translations: fromTranslationForm(form.translations) } : {}),
     };
     try {
       if (editing === "new") await api.post("admin/delivery-areas", body);
@@ -118,6 +163,9 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
       if (action === "archive") {
         await api.del(`admin/delivery-areas/${area.id}`);
         setNotice(`Delivery area “${area.name}” archived.`);
+      } else if (action === "restore") {
+        await api.post(`admin/delivery-areas/${area.id}/restore`, { isActive: true });
+        setNotice(`Delivery area “${area.name}” restored and active again.`);
       } else {
         await api.patch(`admin/delivery-areas/${area.id}/status`, { isActive: !area.isActive });
         setNotice(`Delivery area “${area.name}” ${area.isActive ? "deactivated" : "activated"}.`);
@@ -194,7 +242,7 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
         ) : null}
         {shown.length ? (
           <TableWrap>
-            <table className="w-full min-w-[46rem]">
+            <table className="rtable w-full xl:min-w-[46rem]">
               <thead className="bg-cream/60">
                 <tr>
                   <th scope="col" className={th}>
@@ -217,7 +265,7 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
               <tbody className="divide-y divide-line/60">
                 {shown.map((a) => (
                   <tr key={a.id} className="hover:bg-cream/40">
-                    <td className={td}>
+                    <td className={`${td} rtable-main`}>
                       <p className="font-semibold text-charcoal">{a.name}</p>
                       <p className="text-xs text-ink-muted">{a.district ?? "District not set"}</p>
                       {a.notes ? <p className="mt-0.5 max-w-xs truncate text-xs text-ink-muted">{a.notes}</p> : null}
@@ -237,11 +285,22 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
                         <Badge tone="gold">Inactive</Badge>
                       )}
                     </td>
-                    <td className={`${td} text-right`}>
+                    <td className={`${td} rtable-actions text-right`}>
                       {a.archivedAt ? (
-                        <span className="text-xs text-ink-muted">Kept for history</span>
+                        isAdmin ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setConfirm({ area: a, action: "restore" })}
+                            icon={<ArchiveRestore aria-hidden="true" className="size-3.5" />}
+                          >
+                            Restore<span className="sr-only"> {a.name}</span>
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-ink-muted">Kept for history</span>
+                        )
                       ) : (
-                        <div className="flex justify-end gap-2">
+                        <div className="row-actions">
                           <Button
                             variant="outline"
                             size="sm"
@@ -288,7 +347,7 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
           </>
         }
       >
-        <form id="area-form" onSubmit={save} className="space-y-4">
+        <form id="area-form" noValidate onSubmit={save} className="space-y-4">
           <Alert tone="info">Enter only locations, fees and notes confirmed by the shop.</Alert>
           {formError ? (
             <Alert>
@@ -302,13 +361,13 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
               ) : null}
             </Alert>
           ) : null}
-          <Field label="Area name" required>
+          <Field label="Area name" required error={v.error("name")}>
             {(p) => (
               <Input
                 {...p}
-                required
                 maxLength={120}
                 value={form.name}
+                onBlur={v.blur("name")}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             )}
@@ -324,14 +383,14 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
                 />
               )}
             </Field>
-            <Field label="Postal code" hint="Optional. 5 digits.">
+            <Field label="Postal code" hint="Optional. 5 digits." error={v.error("postalCode")}>
               {(p) => (
                 <Input
                   {...p}
                   inputMode="numeric"
-                  pattern="[0-9]{5}"
                   maxLength={5}
                   value={form.postalCode}
+                  onBlur={v.blur("postalCode")}
                   onChange={(e) => setForm({ ...form, postalCode: e.target.value.replace(/\D/g, "") })}
                 />
               )}
@@ -340,15 +399,15 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
           <Field
             label="Approved delivery fee (LKR)"
             hint="Optional. Leave empty unless the shop has approved a fee for this area."
+            error={v.error("feeLkr")}
           >
             {(p) => (
               <Input
                 {...p}
-                type="number"
-                min={0}
-                max={1000000}
-                step="0.01"
+                inputMode="decimal"
+                maxLength={10}
                 value={form.feeLkr}
+                onBlur={v.blur("feeLkr")}
                 onChange={(e) => setForm({ ...form, feeLkr: e.target.value })}
               />
             )}
@@ -374,6 +433,22 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
               Active (shown to customers immediately)
             </label>
           ) : null}
+          {translationsSupported ? (
+            <TranslationFields
+              value={form.translations}
+              onChange={(translations) => setForm({ ...form, translations })}
+              fields={[
+                {
+                  key: "name",
+                  label: "Area name",
+                  english: form.name,
+                  maxLength: 120,
+                  hint: "How customers write the place name in this language.",
+                },
+                { key: "notes", label: "Delivery notes", english: form.notes, multiline: true, maxLength: 500 },
+              ]}
+            />
+          ) : null}
         </form>
       </Dialog>
 
@@ -382,19 +457,31 @@ export function DeliveryAreasManager({ openNew }: { openNew: boolean }) {
         title={
           confirm?.action === "archive"
             ? "Archive delivery area?"
-            : confirm?.area.isActive
-              ? "Deactivate delivery area?"
-              : "Activate delivery area?"
+            : confirm?.action === "restore"
+              ? "Restore delivery area?"
+              : confirm?.area.isActive
+                ? "Deactivate delivery area?"
+                : "Activate delivery area?"
         }
         message={
           confirm?.action === "archive"
             ? `“${confirm.area.name}” will be removed from the website checker and this list. It is kept in the archive for history.`
-            : confirm?.area.isActive
-              ? `Customers checking “${confirm.area.name}” will be asked to confirm delivery with the team instead.`
-              : `Customers checking “${confirm?.area.name}” will be told the shop delivers there.`
+            : confirm?.action === "restore"
+              ? `“${confirm.area.name}” comes back as the same record and is shown to customers again (website checker and quotation locations). If a current area already uses this name, archive or rename it first.`
+              : confirm?.area.isActive
+                ? `Customers checking “${confirm.area.name}” will be asked to confirm delivery with the team instead.`
+                : `Customers checking “${confirm?.area.name}” will be told the shop delivers there.`
         }
-        confirmLabel={confirm?.action === "archive" ? "Archive" : confirm?.area.isActive ? "Deactivate" : "Activate"}
-        danger={confirm?.action === "archive" || confirm?.area.isActive}
+        confirmLabel={
+          confirm?.action === "archive"
+            ? "Archive"
+            : confirm?.action === "restore"
+              ? "Restore"
+              : confirm?.area.isActive
+                ? "Deactivate"
+                : "Activate"
+        }
+        danger={confirm?.action === "archive" || (confirm?.action === "toggle" && confirm.area.isActive)}
         busy={busy}
         onConfirm={doConfirm}
         onClose={() => setConfirm(null)}

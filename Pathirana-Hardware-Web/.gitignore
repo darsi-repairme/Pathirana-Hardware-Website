@@ -48,3 +48,6 @@ next-env.d.ts
 /build-reports/
 /assets/gallery/*
 !/assets/gallery/.gitkeep
+
+# Extra static builds (previews / test copies)
+/out-*/

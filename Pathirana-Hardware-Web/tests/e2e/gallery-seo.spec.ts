@@ -1,12 +1,26 @@
 import { expect, test } from "./fixtures";
 import { trackErrors } from "./helpers";
 
-const FIXTURES = "http://127.0.0.1:4174";
+const FIXTURES = `http://127.0.0.1:${process.env.E2E_FIXTURES_PORT || 4174}`;
+const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
 
 test.describe("Gallery", () => {
   test("production gallery: filters, labelled illustrations, collage and lightbox", async ({ page }) => {
     const errors = trackErrors(page);
     await page.goto("/gallery/");
+    // Built with a live API, the Gallery first shows a loading placeholder (never images that may have
+    // been hidden in the Admin); with no published Admin photos it then shows the bundled collections.
+    await expect(page.locator("[data-gallery-status]")).not.toHaveAttribute("data-gallery-status", "loading");
+    // Connected to the API, ONLY the Admin Gallery is shown (the isolated test API has no photos, so
+    // the honest empty state appears, never the bundled images). The bundled collections below are
+    // checked on a static build (no API).
+    const mode = await page.locator("[data-gallery-status]").getAttribute("data-gallery-status");
+    if (mode !== "static") {
+      await expect(page.locator("[data-gallery-status=empty]")).toBeVisible();
+      await expect(page.locator("main ul img")).toHaveCount(0);
+      expect(errors).toEqual([]);
+      return;
+    }
     const thumbs = page.locator("main ul button", { hasText: "View larger image" });
     const total = await thumbs.count();
     expect(total).toBeGreaterThanOrEqual(10);
@@ -52,6 +66,9 @@ test.describe("Gallery", () => {
   });
 
   test("lightbox: open, keyboard navigation, Escape, focus return (fixture build)", async ({ page }) => {
+    // The bundled test patterns only appear without an API (with one, ONLY Admin photos are shown);
+    // the live lightbox is tested in live-services-gallery.spec.ts.
+    test.skip(Boolean(API), "API build: bundled gallery images are never shown");
     const errors = trackErrors(page);
     await page.goto(`${FIXTURES}/gallery/`);
     const thumbs = page.getByRole("button", { name: /Automated test pattern/ });
@@ -110,7 +127,8 @@ test.describe("SEO", () => {
     const raw = await page.locator('script[type="application/ld+json"]').textContent();
     const data = JSON.parse(raw!);
     expect(data["@type"]).toBe("HardwareStore");
-    expect(data.name).toBe("Pathirana Hardware (Pvt) Ltd.");
+    expect(data.name).toBe("Pathirana Hardware");
+    expect(data.legalName).toBe("Pathirana Hardware (Pvt) Ltd."); // legal name kept in structured data only
     expect(data.telephone).toBe("+94712259699");
     expect(data.address.streetAddress).toBe("Pallama Road");
     expect(data.address.addressLocality).toBe("Bangadeniya");

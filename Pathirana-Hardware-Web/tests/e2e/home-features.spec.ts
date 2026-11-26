@@ -13,8 +13,8 @@ test.describe("Hero carousel", () => {
     await expect(slides).toHaveCount(3);
     const dots = page.getByRole("button", { name: /^Show slide \d/ });
     await expect(dots).toHaveCount(3);
-    // Exactly one Play/Pause control, showing Pause while autoplay is on.
-    await expect(page.getByRole("button", { name: "Pause slide show" })).toHaveCount(1);
+    // No visible Play/Pause control (removed by request); autoplay still runs.
+    await expect(page.locator(hero).getByRole("button", { name: /pause|play/i })).toHaveCount(0);
     await page.mouse.move(1, 1); // not hovering the hero
     await expect(dots.nth(0)).toHaveAttribute("aria-current", "true");
     await page.waitForTimeout(4500);
@@ -73,24 +73,9 @@ test.describe("Hero carousel", () => {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 
-  test("Pause keeps it paused (hover/leave can't override); Play resumes", async ({ page, isMobile }) => {
+  test("no Pause button anywhere on the Home sliders", async ({ page }) => {
     await page.goto("/");
-    const dots = page.getByRole("button", { name: /^Show slide \d/ });
-    await page.getByRole("button", { name: "Pause slide show" }).click();
-    const play = page.getByRole("button", { name: "Play slide show" });
-    await expect(play).toBeVisible();
-    if (!isMobile) {
-      await page.locator(hero).hover({ position: { x: 40, y: 200 } });
-      await page.mouse.move(1, 1); // leave
-    } else {
-      await page.locator("body").click({ position: { x: 1, y: 1 } }); // blur
-    }
-    await page.waitForTimeout(7000);
-    await expect(dots.nth(0)).toHaveAttribute("aria-current", "true");
-    await play.click();
-    await page.locator("body").click({ position: { x: 1, y: 1 } }); // focus out of the carousel
-    await page.mouse.move(1, 1);
-    await expect(dots.nth(1)).toHaveAttribute("aria-current", "true", { timeout: 7500 });
+    await expect(page.getByRole("button", { name: /pause|play (slide|service)/i })).toHaveCount(0);
   });
 
   test("reduced motion: no autoplay", async ({ browser }) => {
@@ -268,16 +253,25 @@ async function expectPlywoodCard(page: import("@playwright/test").Page) {
   );
   const wa = plywood.locator("a[href^='https://wa.me/94712259699?text=']");
   await expect(wa).toHaveAttribute("target", "_blank");
-  expect(new URL((await wa.getAttribute("href"))!).searchParams.get("text")).toBe(
-    "Hello Pathirana Hardware,\nI would like to enquire about plywood.\nPlease share available options and prices.",
+  // Shared product enquiry format (the link line appears only when NEXT_PUBLIC_SITE_URL is set).
+  const text = new URL((await wa.getAttribute("href"))!).searchParams.get("text")!;
+  expect(text).toMatch(
+    /^Hello Pathirana Hardware,\n\nI am interested in Plywood\.\nPrice shown: Contact for Price\.\nQuantity: \[enter quantity\]\.\nMy location: \[enter location\]\.\n/,
   );
+  expect(text).not.toMatch(/localhost|127\.0\.0\.1/);
+  expect(text.endsWith("\n\nPlease confirm availability and delivery charges.")).toBe(true);
 }
 
 test.describe("Contact actions", () => {
   test("Call and WhatsApp use the confirmed number on every page", async ({ page }) => {
+    // Seven page loads, including the homepage and Services 3D scenes (software WebGL): more than
+    // the default 30 s can be needed under parallel load, as for the other multi-page tests.
+    test.setTimeout(60_000);
     for (const path of ["/", "/products/", "/about/", "/services/", "/gallery/", "/contact/"]) {
       await page.goto(path);
-      await expect(page.locator("header a.header-action[href='https://wa.me/94712259699']")).toHaveCount(1);
+      // Header: Call icon (no WhatsApp icon since 2026-11-21); WhatsApp stays in the footer and menu.
+      await expect(page.locator("header a.header-action[href='tel:+94712259699']")).toHaveCount(1);
+      await expect(page.locator("header a.header-action[href^='https://wa.me/']")).toHaveCount(0);
       await expect(page.locator("footer a[href='https://wa.me/94712259699']")).toHaveCount(1);
       const wa = await page
         .locator("a[href*='wa.me'], a[href*='whatsapp']")
@@ -306,7 +300,15 @@ test.describe("Contact actions", () => {
     await expect(page.getByRole("button", { name: /testimonial/ })).toHaveCount(0);
     // Its own section, separate from the image-led gallery.
     await expect(page.locator("section[aria-labelledby='testimonials-title'] img")).toHaveCount(0);
-    await expect(page.locator("section[aria-labelledby='gallery-preview-title'] img")).toHaveCount(5);
+    // The gallery preview: 5 bundled photos on a static build; with an API, only Admin photos (the
+    // test API publishes none, so its honest empty message instead — never the bundled ones).
+    const preview = page.locator("section[aria-labelledby='gallery-preview-title']");
+    if (STATIC_CATALOGUE) {
+      await expect(preview.locator("img")).toHaveCount(5);
+    } else {
+      await expect(preview.locator("[data-home-gallery=empty]")).toBeVisible();
+      await expect(preview.locator("img")).toHaveCount(0);
+    }
     await expect(page.locator("main")).not.toContainText(/★|\d(\.\d)? out of 5|stars/i);
   });
 });
@@ -523,12 +525,12 @@ test.describe("Six approved services", () => {
   test("360° ring: one facing service, controls, select and keyboard; all six reachable", async ({ page }) => {
     // ~12 one-second 3D turns with live WebGL scenes: slow under software rendering.
     test.setTimeout(90_000);
+    // Reduced motion: no autoplay, so the manual steps below cannot race the 6 s rotation
+    // (there is no Pause button any more).
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
     const ring = page.locator(".services-ring-stage");
     await ring.scrollIntoViewIfNeeded();
-    // Manual Pause holds the ring still (touch has no hover pause), then Play is offered.
-    await page.getByRole("button", { name: "Pause service rotation" }).click();
-    await expect(page.getByRole("button", { name: "Play service rotation" })).toBeVisible();
     const front = page.locator(".services-ring-card[data-dist='0']");
     await expect(front).toHaveCount(1);
     await expect(front.locator("h3")).toHaveText(titles[0]!);

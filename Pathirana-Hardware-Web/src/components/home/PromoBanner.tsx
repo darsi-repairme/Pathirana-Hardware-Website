@@ -3,6 +3,7 @@ import { images } from "@/lib/images";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { InView } from "@/components/ui/InView";
+import { T } from "@/i18n/I18nProvider";
 
 /** "Your Dream Project Starts Here!" — gold panel over the construction-site photograph. */
 export function PromoBanner() {
@@ -29,10 +30,10 @@ export function PromoBanner() {
               id="promo-title"
               className="mt-4 font-display text-3xl leading-tight font-semibold text-charcoal sm:text-4xl"
             >
-              Your Dream Project Starts Here!
+              <T>Your Dream Project Starts Here!</T>
             </h2>
             <p className="mt-3 max-w-sm text-[1.05rem] text-charcoal/85">
-              Find materials for your next building project.
+              <T>Find materials for your next building project.</T>
             </p>
             <div className="mt-7">
               <Button href="/products/" arrow="right" className="!bg-forest-900 hover:!bg-forest">

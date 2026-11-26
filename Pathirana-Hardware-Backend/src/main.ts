@@ -12,6 +12,13 @@ import { pendingMigrations } from "./database/migrator";
 const LEVELS = ["error", "warn", "log", "debug", "verbose"] as const;
 
 async function main() {
+  // ENV_FILE (e.g. .env.supabase) is loaded FIRST, so its values win; .env then fills in the
+  // rest. Without ENV_FILE nothing changes (the local configuration).
+  const extra = process.env.ENV_FILE;
+  if (extra) {
+    if (!existsSync(extra)) throw new Error(`ENV_FILE not found: ${extra}`);
+    process.loadEnvFile(extra);
+  }
   if (existsSync(".env")) process.loadEnvFile(".env");
   const env = loadEnv(); // throws (without printing values) when configuration is unsafe
   const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(env), {

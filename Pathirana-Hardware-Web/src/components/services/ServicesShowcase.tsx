@@ -1,18 +1,18 @@
 "use client";
 
+import { useT } from "@/i18n/I18nProvider";
+
 import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
-import { services } from "@/content/services";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { approvedOnly, useServiceText, useSiteServices } from "@/lib/live-services";
 import { serviceIcons } from "@/components/services/ServiceIcon";
 import { ServiceVisual } from "@/components/home/ServiceVisual";
 import { useAutoAdvance } from "@/lib/useAutoAdvance";
 import { ServiceActions } from "./ServiceActions";
 
-const COUNT = services.length;
 /** Same approved timing as the Home ring. */
 const AUTO_MS = 6000;
 const SWIPE_PX = 40;
-const wrap = (n: number) => ((n % COUNT) + COUNT) % COUNT;
 
 /**
  * Services page — one circular 360° display (CEO design requirement).
@@ -31,17 +31,26 @@ const wrap = (n: number) => ((n % COUNT) + COUNT) % COUNT;
  * under prefers-reduced-motion). Phones get the same circle, scaled down.
  */
 export function ServicesShowcase() {
+  // Published services from the Admin (the approved six until the API answers, or without it).
+  const services = approvedOnly(useSiteServices().services);
+  const text = useServiceText();
+  const COUNT = Math.max(services.length, 1);
+  const wrap = (n: number) => ((n % COUNT) + COUNT) % COUNT;
   const [turn, setTurn] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [userPaused, setUserPaused] = useState(false);
+  /** Pointer resting on the circular controls (orbit or the round Previous / Next buttons). */
+  const [navHover, setNavHover] = useState(false);
+  const hoverOn = (e: PointerEvent<HTMLElement>) => e.pointerType === "mouse" && setNavHover(true);
+  const hoverOff = () => setNavHover(false);
   const region = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
   const active = wrap(turn);
 
   const step = (d: number) => setTurn((t) => t + d);
   const select = (i: number) => {
-    // Shortest way round: −2…+3 steps.
-    const d = wrap(i - active + 2) - 2;
+    // Shortest way round (−2…+3 steps for six).
+    const half = Math.floor(COUNT / 2) - 1;
+    const d = wrap(i - active + half) - half;
     if (d) step(d);
   };
 
@@ -49,7 +58,8 @@ export function ServicesShowcase() {
     delay: AUTO_MS,
     onAdvance: () => step(1),
     step: turn,
-    hold: dragging || userPaused,
+    hold: dragging || navHover,
+    pauseOnHover: false,
   });
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -80,15 +90,23 @@ export function ServicesShowcase() {
     window.setTimeout(() => setDragging(false), 0);
   };
 
-  const current = services[active]!;
+  const current = services[active];
+  const t = useT();
+  if (!current)
+    return (
+      <p className="text-center text-lg text-ink-muted">
+        {t("Please call or WhatsApp the store to ask about our services.")}
+      </p>
+    );
   const CurrentIcon = serviceIcons[current.icon];
+  const cur = text(current);
 
   return (
     <div
       ref={region}
       role="group"
       aria-roledescription="carousel"
-      aria-label="Our services"
+      aria-label={t("Our services")}
       onKeyDown={(e) => {
         if (e.key === "ArrowRight") step(1);
         if (e.key === "ArrowLeft") step(-1);
@@ -96,17 +114,19 @@ export function ServicesShowcase() {
       className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14 xl:gap-20"
     >
       <p className="sr-only" aria-live={autoplaying ? "off" : "polite"} aria-atomic="true">
-        Service {active + 1} of {COUNT}: {current.title}
+        {t("Service {n} of {count}:", { n: active + 1, count: COUNT })} {cur.title}
       </p>
 
       {/* ── The circular display ── */}
       <div
         className={`services-orbit touch-pan-y select-none ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
-        style={{ "--turn": turn } as CSSProperties}
+        style={{ "--turn": turn, "--step": `${360 / COUNT}deg` } as CSSProperties}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onPointerEnter={hoverOn}
+        onPointerLeave={hoverOff}
       >
         <div aria-hidden="true" className="services-orbit-disc" />
         {/* 3D objects: the active one faces front; the others are turned away. */}
@@ -139,7 +159,7 @@ export function ServicesShowcase() {
                   }`}
                 >
                   <Icon aria-hidden="true" strokeWidth={1.7} className="size-[45%]" />
-                  <span className="sr-only">Show {s.title}</span>
+                  <span className="sr-only">{t("Show {name}", { name: text(s).title })}</span>
                 </button>
               </li>
             );
@@ -151,53 +171,57 @@ export function ServicesShowcase() {
       <div className="mx-auto w-full max-w-xl text-center lg:mx-0 lg:text-left">
         <div key={active} className="fade-enter">
           <p className="text-xs font-semibold tracking-[0.22em] text-brass-ink uppercase">
-            Service {String(active + 1).padStart(2, "0")} / {String(COUNT).padStart(2, "0")}
+            <span className="whitespace-nowrap">
+              {t("Service")} {String(active + 1).padStart(2, "0")} / {String(COUNT).padStart(2, "0")}
+            </span>
           </p>
           {/* h2: the showcase sits directly under the page h1 (/services/). */}
-          <h2 className="mt-3 flex items-center justify-center gap-3 font-display text-[clamp(1.6rem,6vw,2.35rem)] leading-tight font-semibold text-forest lg:justify-start">
+          {/* Phones / tablets: icon centred above the (balanced, naturally wrapping) title;
+              desktop: icon beside a left-aligned title. */}
+          <h2
+            data-service-heading
+            className="mt-3 flex flex-col items-center gap-2 font-display text-[clamp(1.6rem,6vw,2.35rem)] leading-tight font-semibold text-forest lg:flex-row lg:items-center lg:gap-3"
+          >
             <CurrentIcon aria-hidden="true" strokeWidth={1.6} className="size-7 shrink-0 text-brass" />
-            {current.title}
+            <span className="max-w-full min-w-0 [text-wrap:balance]">{cur.title}</span>
           </h2>
           <span
             aria-hidden="true"
             className="mx-auto mt-4 block h-0.5 w-14 bg-gradient-to-r from-brass to-gold-soft lg:mx-0"
           />
-          <p className="mt-4 min-h-[3.5em] text-lg leading-relaxed text-ink-muted">{current.summary}</p>
+          <p className="mt-4 min-h-[3.5em] text-lg leading-relaxed text-ink-muted">{cur.summary}</p>
           <ServiceActions service={current} className="mx-auto mt-6 max-w-md lg:mx-0" />
         </div>
 
-        {/* Previous · Next · Play/Pause */}
+        {/* Previous · counter · Next. Resting the pointer on these round controls (or on the
+            orbit) pauses the rotation; it resumes when the pointer leaves. No Pause button. */}
         <div className="mt-8 flex items-center justify-center gap-2 lg:justify-start">
           <button
             type="button"
             onClick={() => step(-1)}
+            onPointerEnter={hoverOn}
+            onPointerLeave={hoverOff}
             className="inline-flex size-11 items-center justify-center rounded-full border border-forest/30 text-forest transition-colors hover:border-brass hover:bg-white"
           >
             <ChevronLeft aria-hidden="true" className="size-5" />
-            <span className="sr-only">Previous service</span>
+            <span className="sr-only">{t("Previous service")}</span>
           </button>
-          <span aria-hidden="true" className="w-16 text-center text-sm font-semibold tracking-[0.16em] text-brass-ink">
+          <span
+            aria-hidden="true"
+            data-slide-counter
+            className="inline-flex min-w-[5.5rem] shrink-0 items-center justify-center text-sm font-semibold tracking-[0.12em] whitespace-nowrap text-brass-ink tabular-nums"
+          >
             {String(active + 1).padStart(2, "0")} / {String(COUNT).padStart(2, "0")}
           </span>
           <button
             type="button"
             onClick={() => step(1)}
+            onPointerEnter={hoverOn}
+            onPointerLeave={hoverOff}
             className="inline-flex size-11 items-center justify-center rounded-full border border-forest/30 text-forest transition-colors hover:border-brass hover:bg-white"
           >
             <ChevronRight aria-hidden="true" className="size-5" />
-            <span className="sr-only">Next service</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setUserPaused((v) => !v)}
-            className="ml-2 inline-flex size-11 items-center justify-center rounded-full bg-forest text-gold-soft transition-colors hover:bg-forest-800 motion-reduce:hidden"
-          >
-            {userPaused ? (
-              <Play aria-hidden="true" className="size-4 fill-current" />
-            ) : (
-              <Pause aria-hidden="true" className="size-4 fill-current" />
-            )}
-            <span className="sr-only">{userPaused ? "Play service rotation" : "Pause service rotation"}</span>
+            <span className="sr-only">{t("Next service")}</span>
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { business } from "@/content/business";
+import { T } from "@/i18n/I18nProvider";
 
 /**
  * Official brand glyphs (Simple Icons, CC0 — https://simpleicons.org),
@@ -43,7 +44,9 @@ export function SocialLinks({ className = "" }: { className?: string }) {
         <li key={s.name}>
           <a href={s.href} target="_blank" rel="noopener noreferrer" className="icon-action">
             <SocialIcon name={s.name} />
-            <span className="sr-only">Pathirana Hardware on {s.label} (opens in a new tab)</span>
+            <span className="sr-only">
+              <T vars={{ network: s.label }}>{"Pathirana Hardware on {network} (opens in a new tab)"}</T>
+            </span>
           </a>
         </li>
       ))}

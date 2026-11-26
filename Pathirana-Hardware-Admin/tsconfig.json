@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": false,
     "skipLibCheck": true,
     "strict": true,
@@ -20,7 +24,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
   "include": [
@@ -30,7 +36,35 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     ".next-e2e/types/**/*.ts",
-    ".next-e2e/dev/types/**/*.ts"
+    ".next-e2e/dev/types/**/*.ts",
+    ".next-live/types/**/*.ts",
+    ".next-live/dev/types/**/*.ts",
+    ".next-live2/types/**/*.ts",
+    ".next-live2/dev/types/**/*.ts",
+    ".next-live3/types/**/*.ts",
+    ".next-live3/dev/types/**/*.ts",
+    ".next-owner/types/**/*.ts",
+    ".next-owner/dev/types/**/*.ts",
+    ".next-owner2/types/**/*.ts",
+    ".next-owner2/dev/types/**/*.ts",
+    ".next-verify/types/**/*.ts",
+    ".next-verify/dev/types/**/*.ts",
+    ".next-live4/types/**/*.ts",
+    ".next-live4/dev/types/**/*.ts",
+    ".next-live5/types/**/*.ts",
+    ".next-live5/dev/types/**/*.ts",
+    ".next-live6/types/**/*.ts",
+    ".next-live6/dev/types/**/*.ts",
+    ".next-secbase/types/**/*.ts",
+    ".next-secbase/dev/types/**/*.ts",
+    ".next-secfix/types/**/*.ts",
+    ".next-secfix/dev/types/**/*.ts",
+    ".next-qa1125/types/**/*.ts",
+    ".next-qa1125/dev/types/**/*.ts",
+    ".next-prev1126/types/**/*.ts",
+    ".next-prev1126/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

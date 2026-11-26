@@ -8,6 +8,7 @@ import { images } from "@/lib/images";
 import { useCategories } from "@/lib/live-taxonomy";
 import { CategoryVisual, CategoryIcon } from "./CategoryVisual";
 import { TaxonomyNotice } from "./TaxonomyStates";
+import { useCategoryText, useT } from "@/i18n/I18nProvider";
 
 /**
  * Products page › Browse by Category — compact, image-led tiles for the ACTIVE
@@ -39,6 +40,8 @@ export function CategoryShowcase({ heading }: { heading: ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   const { items, status, retry } = useCategories();
   const listId = useId();
+  const t = useT();
+  const text = useCategoryText();
 
   return (
     <>
@@ -53,7 +56,7 @@ export function CategoryShowcase({ heading }: { heading: ReactNode }) {
             onClick={() => setExpanded((v) => !v)}
             className="group inline-flex min-h-11 items-center gap-2 justify-self-center rounded-full px-3 font-semibold text-forest transition-colors hover:text-brass-ink lg:justify-self-end"
           >
-            {expanded ? "Show Fewer Categories" : "View All Categories"}
+            {expanded ? t("Show Fewer Categories") : t("View All Categories")}
             <ArrowRight
               aria-hidden="true"
               className={`size-4 transition-transform duration-300 motion-reduce:transition-none ${
@@ -125,10 +128,12 @@ export function CategoryShowcase({ heading }: { heading: ReactNode }) {
                   aria-hidden="true"
                   className="absolute inset-0 bg-gradient-to-t from-forest-900 via-forest-900/45 to-transparent"
                 />
-                <span className="relative flex items-end gap-2 p-3 sm:p-4">
-                  <CategoryIcon slug={c.slug} strokeWidth={1.7} className="mb-0.5 size-5 shrink-0 text-gold-soft" />
-                  <span className="font-display text-[1.02rem] leading-tight font-semibold text-white sm:text-lg">
-                    {c.title}
+                {/* Phones / tablets: icon above the name so the name gets the tile's full width
+                    (long Tamil / Sinhala names wrap instead of being cut off); lg+: side by side. */}
+                <span className="relative flex min-w-0 flex-col items-start gap-1.5 p-3 sm:p-4 lg:flex-row lg:items-end lg:gap-2">
+                  <CategoryIcon slug={c.slug} strokeWidth={1.7} className="size-5 shrink-0 text-gold-soft lg:mb-0.5" />
+                  <span className="max-w-full min-w-0 font-display text-[1.02rem] leading-tight font-semibold [overflow-wrap:break-word] text-white sm:text-lg">
+                    {text(c).title}
                   </span>
                 </span>
               </Link>

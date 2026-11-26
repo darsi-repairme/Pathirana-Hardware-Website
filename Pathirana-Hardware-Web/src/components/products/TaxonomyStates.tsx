@@ -7,6 +7,8 @@ import type { LiveStatus } from "@/lib/live-taxonomy";
 import { useLiveCategory } from "@/lib/live-taxonomy";
 import { liveCatalogueEnabled } from "@/lib/catalogue";
 import { Message, ProductDetailSkeleton } from "./ProductDetail";
+import { useLocale } from "@/i18n/I18nProvider";
+import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 
 const COPY = {
   categories: {
@@ -39,27 +41,31 @@ export function TaxonomyNotice({
   compact?: boolean;
   tone?: "light" | "dark";
 }) {
+  const { t, locale } = useLocale();
   if (status !== "empty" && status !== "error") return null;
-  const [title, lead] = COPY[kind][status];
+  const [title, lead] = COPY[kind][status].map((s) => t(s)) as [string, string];
   const muted = tone === "dark" ? "text-sage" : "text-ink-muted";
   const link = tone === "dark" ? "text-gold-soft hover:text-white" : "text-forest hover:text-brass-ink";
   const actions = (
-    <span className="inline-flex flex-wrap items-center gap-x-5 gap-y-1 font-semibold">
+    <span className="contact-actions" data-contact-actions>
       {status === "error" && onRetry ? (
-        <button type="button" onClick={onRetry} className={`min-h-11 underline underline-offset-4 ${link}`}>
-          Try again
+        <button type="button" onClick={onRetry} className={`contact-action underline underline-offset-4 ${link}`}>
+          {t("Try again")}
         </button>
       ) : null}
-      <a href={telHref} className={`inline-flex min-h-11 items-center gap-1.5 ${link}`}>
-        <Phone aria-hidden="true" className="size-4" /> Call {business.phone.display}
+      <a href={telHref} className={`contact-action ${link}`}>
+        <Phone aria-hidden="true" />
+        {t("Call {phone}", { phone: business.phone.display })}
       </a>
       <a
-        href={whatsappEnquiryHref("your products")}
+        href={whatsappEnquiryHref(t("your products"), locale)}
         target="_blank"
         rel="noopener noreferrer"
-        className={`min-h-11 ${link}`}
+        className={`contact-action ${link}`}
       >
-        WhatsApp us
+        <WhatsAppIcon />
+        {t("WhatsApp us")}
+        <span className="sr-only"> {t("(opens in a new tab)")}</span>
       </a>
     </span>
   );
@@ -89,7 +95,7 @@ export function TaxonomyNotice({
       <Icon aria-hidden="true" className={`mx-auto size-8 ${tone === "dark" ? "text-gold-soft" : "text-brass-ink"}`} />
       <h3 className={`mt-3 font-display text-xl ${tone === "dark" ? "text-white" : "text-forest"}`}>{title}</h3>
       <p className={`mx-auto mt-2 max-w-lg text-sm ${muted}`}>
-        {lead} Call or WhatsApp the store and we will help with what you need.
+        {lead} {t("Call or WhatsApp the store and we will help with what you need.")}
       </p>
       <div className="mt-3 flex justify-center text-sm">{actions}</div>
     </div>
@@ -128,7 +134,11 @@ function LiveGate({ slug, what, children }: { slug: string; what: "category" | "
         state="not-found"
         icon={<PackageX aria-hidden="true" className="mx-auto size-10 text-brass-ink" />}
         title={what === "category" ? "Category not available" : "Product not available"}
-        text={`This ${what === "category" ? "category" : "product"} is not part of our online catalogue at the moment. Browse our products, or call or WhatsApp the store.`}
+        text={
+          what === "category"
+            ? "This category is not part of our online catalogue at the moment. Browse our products, or call or WhatsApp the store."
+            : "This product is not part of our online catalogue at the moment. Browse our products, or call or WhatsApp the store."
+        }
       />
     );
   }

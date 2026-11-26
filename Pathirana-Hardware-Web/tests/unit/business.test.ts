@@ -33,8 +33,14 @@ test("phone formats agree with each other", () => {
 });
 
 test("unconfirmed details stay unpublished by default", () => {
-  assert.equal(business.openingHours, null);
   assert.equal(business.geo, null);
+});
+
+test("client-confirmed opening hours (no invented holiday schedule)", () => {
+  assert.deepEqual(business.openingHours, [
+    { days: "Monday – Saturday", hours: "7:30 AM – 7:00 PM" },
+    { days: "Sunday", hours: "Closed" },
+  ]);
 });
 
 test("client-confirmed establishment date and owner", () => {

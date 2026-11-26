@@ -1,20 +1,18 @@
 "use client";
 
+import { useT } from "@/i18n/I18nProvider";
+
 import Link from "next/link";
 import { useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
-import { services } from "@/content/services";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { approvedOnly, serviceHref, useServiceText, useSiteServices } from "@/lib/live-services";
 import { serviceIcons } from "@/components/services/ServiceIcon";
 import { useAutoAdvance } from "@/lib/useAutoAdvance";
 import { ServiceVisual } from "./ServiceVisual";
 
-const COUNT = services.length;
 /** Time to read the facing service before the ring turns on (CEO review). */
 const AUTO_MS = 6000;
 const SWIPE_PX = 40;
-
-/** Ring position (0–5) of a continuous turn counter. */
-const wrap = (n: number) => ((n % COUNT) + COUNT) % COUNT;
 
 /**
  * 360° services ring (CEO review #09) — CSS 3D, no extra WebGL or libraries.
@@ -36,9 +34,14 @@ const wrap = (n: number) => ((n % COUNT) + COUNT) % COUNT;
  * and keeps turning in one direction past the sixth service.
  */
 export function ServicesRing() {
+  // Published services from the Admin (the approved six until the API answers, or without it).
+  const services = approvedOnly(useSiteServices().services);
+  const text = useServiceText();
+  const COUNT = Math.max(services.length, 1);
+  /** Ring position (0…COUNT-1) of a continuous turn counter. */
+  const wrap = (n: number) => ((n % COUNT) + COUNT) % COUNT;
   const [turn, setTurn] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [userPaused, setUserPaused] = useState(false);
   const region = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
   const active = wrap(turn);
@@ -54,7 +57,7 @@ export function ServicesRing() {
     delay: AUTO_MS,
     onAdvance: () => step(1),
     step: turn,
-    hold: dragging || userPaused,
+    hold: dragging,
   });
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -86,21 +89,23 @@ export function ServicesRing() {
     window.setTimeout(() => setDragging(false), 0);
   };
 
-  const current = services[active]!;
+  const current = services[active];
+  const t = useT();
+  if (!current) return null; // staff have hidden every service
 
   return (
     <div
       ref={region}
       role="group"
       aria-roledescription="carousel"
-      aria-label="Our services"
+      aria-label={t("Our services")}
       onKeyDown={(e) => {
         if (e.key === "ArrowRight") step(1);
         if (e.key === "ArrowLeft") step(-1);
       }}
     >
       <p className="sr-only" aria-live={autoplaying ? "off" : "polite"} aria-atomic="true">
-        Service {active + 1} of {COUNT}: {current.title}
+        {t("Service {n} of {count}:", { n: active + 1, count: COUNT })} {text(current).title}
       </p>
 
       <div
@@ -110,24 +115,26 @@ export function ServicesRing() {
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       >
-        <div className="services-ring" style={{ "--turn": turn } as CSSProperties}>
+        <div className="services-ring" style={{ "--turn": turn, "--step": `${360 / COUNT}deg` } as CSSProperties}>
           {services.map((s, i) => {
             const Icon = serviceIcons[s.icon];
             const isActive = i === active;
             // Ring distance from the front (0 = facing, 1 = neighbour, …).
             const dist = Math.min(wrap(i - active), wrap(active - i));
+            const st = text(s);
             return (
               <div
                 key={s.id}
                 className="services-ring-card"
-                data-dist={dist}
+                style={{ "--i": i } as CSSProperties}
+                data-dist={Math.min(dist, 3)}
                 role="group"
                 aria-roledescription="slide"
-                aria-label={`${i + 1} of ${COUNT}: ${s.shortTitle}`}
+                aria-label={`${i + 1} / ${COUNT}: ${st.shortTitle}`}
                 aria-hidden={!isActive}
               >
                 <Link
-                  href={`/services/${s.id}/`}
+                  href={serviceHref(s)}
                   tabIndex={isActive ? 0 : -1}
                   draggable={false}
                   data-three-hover
@@ -149,9 +156,9 @@ export function ServicesRing() {
                   />
                   <div className="mt-3 flex items-start gap-2.5">
                     <Icon aria-hidden="true" strokeWidth={1.6} className="mt-0.5 size-6 shrink-0 text-gold-soft" />
-                    <h3 className="text-[1.05rem] leading-snug font-semibold text-white sm:text-lg">{s.title}</h3>
+                    <h3 className="text-[1.05rem] leading-snug font-semibold text-white sm:text-lg">{st.title}</h3>
                   </div>
-                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-sage">{s.summary}</p>
+                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-sage">{st.summary}</p>
                   <span className="mt-auto inline-flex items-center gap-1.5 pt-3 text-sm font-semibold text-gold-soft">
                     View service
                     <ArrowRight
@@ -174,7 +181,7 @@ export function ServicesRing() {
           className="inline-flex size-11 items-center justify-center rounded-full border border-white/20 text-white transition-colors hover:border-gold-soft hover:text-gold-soft"
         >
           <ChevronLeft aria-hidden="true" className="size-5" />
-          <span className="sr-only">Previous service</span>
+          <span className="sr-only">{t("Previous service")}</span>
         </button>
         <div className="mx-1 flex items-center">
           {services.map((s, i) => (
@@ -191,7 +198,7 @@ export function ServicesRing() {
                   i === active ? "w-6 bg-gold-soft" : "w-2 bg-white/45 group-hover:bg-white"
                 }`}
               />
-              <span className="sr-only">Show {s.title}</span>
+              <span className="sr-only">{t("Show {name}", { name: text(s).title })}</span>
             </button>
           ))}
         </div>
@@ -201,22 +208,14 @@ export function ServicesRing() {
           className="inline-flex size-11 items-center justify-center rounded-full border border-white/20 text-white transition-colors hover:border-gold-soft hover:text-gold-soft"
         >
           <ChevronRight aria-hidden="true" className="size-5" />
-          <span className="sr-only">Next service</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setUserPaused((v) => !v)}
-          className="ml-1 inline-flex size-11 items-center justify-center rounded-full border border-gold-soft/40 text-gold-soft transition-colors hover:border-gold-soft hover:bg-white/5 motion-reduce:hidden"
-        >
-          {userPaused ? (
-            <Play aria-hidden="true" className="size-4 fill-current" />
-          ) : (
-            <Pause aria-hidden="true" className="size-4 fill-current" />
-          )}
-          <span className="sr-only">{userPaused ? "Play service rotation" : "Pause service rotation"}</span>
+          <span className="sr-only">{t("Next service")}</span>
         </button>
       </div>
-      <p aria-hidden="true" className="mt-2 text-center text-xs font-semibold tracking-[0.2em] text-gold-soft/80">
+      <p
+        aria-hidden="true"
+        data-slide-counter
+        className="mt-2 text-center text-xs font-semibold tracking-[0.2em] whitespace-nowrap text-gold-soft/80 tabular-nums"
+      >
         {String(active + 1).padStart(2, "0")} / {String(COUNT).padStart(2, "0")}
       </p>
     </div>

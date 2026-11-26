@@ -18,12 +18,5 @@ export const footerNav: readonly NavItem[] = [
   { label: "Request a Quotation", href: "/quotation/" },
 ];
 
-/** Legal pages (footer bottom bar). Drafts awaiting owner review — not in the sitemap. */
-export const legalNav: readonly NavItem[] = [
-  { label: "Privacy Policy", href: "/privacy-policy/" },
-  { label: "Refund Policy", href: "/refund-policy/" },
-  { label: "Terms and Conditions", href: "/terms-and-conditions/" },
-];
-
 /** Every top-level public page (sitemap). Detail pages are added in app/sitemap.ts. */
 export const allPages: readonly NavItem[] = footerNav;

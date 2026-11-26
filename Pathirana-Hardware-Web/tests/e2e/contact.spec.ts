@@ -61,7 +61,10 @@ test.describe("Contact details", () => {
       for (const n of numbers) expect(n.replace(/\D/g, "").slice(-9)).toBe("712259699");
       expect(text).not.toMatch(/lorem ipsum|xxx[- ]?xxx|555[- ]\d{4}|123[- ]?4567/i);
       expect(text).not.toMatch(/★|\d(\.\d)? ?stars?|years of experience|since (?!1997)(19|20)\d\d/i);
-      expect(text).not.toMatch(/open (daily|24)|\d{1,2}[.:]\d{2}\s?(am|pm)/i);
+      // Only the client-confirmed hours (Mon–Sat 7:30 AM – 7:00 PM, Sunday closed) may appear.
+      expect(text).not.toMatch(/open (daily|24)/i);
+      const times = text.match(/\d{1,2}[.:]\d{2}\s?(am|pm)/gi) ?? [];
+      for (const tm of times) expect(["7:30 am", "7:00 pm"]).toContain(tm.toLowerCase().replace(/\s+/, " "));
 
       const hrefs = await page.locator("a[href]").evaluateAll((as) => as.map((a) => a.getAttribute("href")!));
       for (const h of hrefs.filter((x) => x.startsWith("tel:"))) expect(h).toBe(TEL);

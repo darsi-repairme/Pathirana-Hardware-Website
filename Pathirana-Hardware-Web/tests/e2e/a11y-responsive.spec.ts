@@ -9,10 +9,9 @@ test.describe("Accessibility (axe, WCAG 2.2 AA)", () => {
       await page.goto(path);
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"])
-        // Home 360° services ring: only the facing card is active. The other cards are
-        // deliberately dimmed (approved design), aria-hidden and out of the tab order — inactive
-        // UI, which WCAG 1.4.3 exempts from contrast. The facing card and controls are still checked.
-        .exclude('.services-ring-card[aria-hidden="true"]')
+        // Home 360° services ring: the dimmed neighbour cards (aria-hidden, out of the tab order)
+        // were once excluded as inactive UI. Since audit A11Y-01 they keep AA contrast (opacity
+        // 0.8), so they are checked too.
         .analyze();
       const summary = results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`);
       expect(summary).toEqual([]);

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { backendFetch, clientIp } from "@/lib/server/backend";
+import { backendFetch } from "@/lib/server/backend";
+import { DEVICE_COOKIE, requestClient, type RequestClient } from "@/lib/server/client-identity";
 import { config, CSRF_HEADER, SESSION_COOKIE } from "@/lib/server/config";
 import { sameOrigin } from "@/lib/server/csrf";
 
@@ -35,10 +36,10 @@ async function forward(req: NextRequest, ctx: { params: Promise<{ path: string[]
       method: req.method,
       headers,
       token,
-      ip: clientIp(req.headers),
+      client: requestClient(req.headers, req.cookies.get(DEVICE_COOKIE)?.value),
       // Stream request bodies (image uploads) straight through.
       ...(mutating ? { body: req.body, duplex: "half" } : {}),
-    } as RequestInit & { token: string; ip?: string; duplex?: "half" });
+    } as RequestInit & { token: string; client?: RequestClient; duplex?: "half" });
   } catch {
     return NextResponse.json({ message: "The server is unavailable. Please try again." }, { status: 503 });
   }

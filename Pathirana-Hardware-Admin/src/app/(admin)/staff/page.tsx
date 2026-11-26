@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ShieldAlert } from "lucide-react";
-import { currentStaff } from "@/lib/server/backend";
+import { currentStaffOrNull as currentStaff } from "@/lib/server/backend";
 import { StaffManager } from "./StaffManager";
 
 export const metadata: Metadata = { title: "Staff" };

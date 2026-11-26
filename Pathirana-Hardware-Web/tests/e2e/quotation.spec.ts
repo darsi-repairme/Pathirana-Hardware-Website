@@ -44,14 +44,18 @@ test.describe("Request a Quotation", () => {
       posted++;
       return r.fulfill({ status: 500, json: {} });
     });
-    await page.getByRole("button", { name: "Submit Quotation Request" }).click();
+    // Consent unticked → Submit disabled, nothing can be sent.
+    const submitBtn = page.getByRole("button", { name: "Submit Quotation Request" });
+    await expect(submitBtn).toBeDisabled();
+    await expect(page.getByLabel(/may use my submitted contact details/)).not.toBeChecked();
+    await page.getByLabel(/may use my submitted contact details/).check();
+    await submitBtn.click();
     await expect(page.getByText("Enter your name.")).toBeVisible();
-    await expect(page.getByText("Enter your phone or WhatsApp number.")).toBeVisible();
+    await expect(page.getByText("Please enter a valid 10-digit mobile number.")).toBeVisible();
     await expect(page.getByText("Choose your location.")).toBeVisible();
     await expect(page.getByText("Enter the delivery address.")).toBeVisible();
     await expect(page.getByText("Enter the product.")).toBeVisible();
     await expect(page.getByText("Enter a quantity above 0.")).toBeVisible();
-    await expect(page.getByText("Please agree so that we can contact you")).toBeVisible();
     await expect(page.getByLabel("Name")).toBeFocused();
     expect(posted).toBe(0);
 
@@ -73,9 +77,15 @@ test.describe("Request a Quotation", () => {
     await expect(page.locator("[data-item-row]")).toHaveCount(2);
     await expect(page.getByLabel("Product 2")).toHaveValue("Row three");
     await page.getByPlaceholder("bag, piece…").first().fill("bag");
-    await page.getByLabel("Phone / WhatsApp number").fill("12");
+    // Phone: letters/symbols removed, max 10 digits; too short → translated 10-digit message.
+    const phone = page.getByLabel("Phone / WhatsApp number");
+    await phone.fill("+94 71-23x");
+    await expect(phone).toHaveValue("947123");
+    await phone.fill("071234567899999");
+    await expect(phone).toHaveValue("0712345678");
+    await phone.fill("12");
     await page.getByRole("button", { name: "Submit Quotation Request" }).click();
-    await expect(page.getByText("Enter a valid phone number")).toBeVisible();
+    await expect(page.getByText("Please enter a valid 10-digit mobile number.")).toBeVisible();
     expect(posted).toBe(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
     expect(errors).toEqual([]);
@@ -83,7 +93,18 @@ test.describe("Request a Quotation", () => {
 
   test("submits items and photos, shows the reference and an editable WhatsApp message", async ({ page, context }) => {
     await mockAreas(page);
-    context.on("page", (p) => p.close().catch(() => {})); // automatic WhatsApp tab, if the browser allows it
+    // The automatic WhatsApp tab: reserved blank during the click, then sent to wa.me only after the save.
+    const tabs: string[] = [];
+    // Never load the real WhatsApp site in tests: a stub page answers for wa.me.
+    await context.route("https://wa.me/**", (r) =>
+      r.fulfill({ contentType: "text/html", body: "<title>WhatsApp</title>" }),
+    );
+    context.on("page", (p) => {
+      p.waitForURL(/wa\.me/, { timeout: 15_000, waitUntil: "commit" })
+        .then(() => tabs.push(p.url()))
+        .catch(() => tabs.push(p.url()))
+        .finally(() => p.close().catch(() => {}));
+    });
     let sent: { data: Record<string, unknown>; photos: number } | null = null;
     await page.route(`${API}/api/v1/quotations`, async (r) => {
       const req: Request = r.request();
@@ -127,17 +148,42 @@ test.describe("Request a Quotation", () => {
     await expect(page.getByRole("alert").filter({ hasText: "not a JPEG, PNG or WebP" })).toBeVisible();
     await expect(page.getByRole("img", { name: /Selected photo/ })).toHaveCount(1);
 
-    await page.getByLabel(/may contact me/).check();
+    // Phone: digits only (spaces removed as typed), at most 10.
+    await expect(page.getByLabel("Phone / WhatsApp number")).toHaveValue("0712345678");
+    // No long privacy paragraph and no Privacy Policy link — only the short consent checkbox.
+    await expect(page.locator("[data-quotation-privacy]")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Privacy Policy" })).toHaveCount(0);
+    const consent = page.getByLabel(/may use my submitted contact details/);
+    await expect(consent).not.toBeChecked();
+    await expect(page.locator("[data-quotation-consent]")).toContainText(
+      "I agree that Pathirana Hardware may use my submitted contact details, delivery information and photos to process and respond to my quotation request.",
+    );
+    // Submit is disabled until the box is ticked.
+    await expect(page.getByRole("button", { name: "Submit Quotation Request" })).toBeDisabled();
+    await expect(page.locator("[data-consent-required]")).toBeVisible();
+    await expect(page.locator("form [data-quotation-not-order]")).toContainText(
+      "does not confirm an order or reserve stock",
+    );
+    await expect(page.locator("input[name=website]")).not.toBeInViewport();
+    await expect(page.getByRole("textbox", { name: "Website" })).toHaveCount(0); // hidden from assistive tech
+
+    await page.getByLabel(/may use my submitted contact details/).check();
     await page.getByRole("button", { name: "Submit Quotation Request" }).click();
 
     const saved = page.locator("[data-quotation-state='saved']");
-    await expect(saved).toContainText("Quotation request saved");
+    await expect(saved.locator("[data-quotation-confirmation]")).toHaveText(
+      "Thank you. Pathirana Hardware has received your quotation request. Our team will contact you to confirm prices, availability and delivery.",
+    );
+    await expect(saved.locator("[data-quotation-not-order]")).toHaveText(
+      "Submitting a quotation request does not confirm an order or reserve stock. No payment is taken.",
+    );
     await expect(saved.locator("[data-quotation-reference]")).toHaveText("PHQ-261118-TEST2");
     await expect(saved).toContainText("only sent when you tap Send");
     expect(sent!.photos).toBe(1);
+    expect(sent!.data).not.toHaveProperty("website"); // honeypot left empty by a person
     expect(sent!.data).toMatchObject({
       customerName: "Test Customer",
-      phone: "071 234 5678",
+      phone: "0712345678",
       location: "Chilaw",
       fulfilment: "delivery",
       deliveryAddress: "Test address",
@@ -155,19 +201,39 @@ test.describe("Request a Quotation", () => {
     const href = (await wa.getAttribute("href"))!;
     expect(href.startsWith("https://wa.me/94712259699?text=")).toBe(true);
     const text = new URL(href).searchParams.get("text")!;
-    for (const part of [
-      "PHQ-261118-TEST2",
-      "Name: Test Customer",
-      "Phone: 071 234 5678",
-      "Location: Chilaw",
-      "Delivery or collection: Delivery",
-      "Delivery address: Test address",
-      "1. Test Cement — 10 bag",
-      "2. Test TOR Bars — 2.5",
-      "Notes: Test notes",
-      "I attached 1 reference photo to quotation PHQ-261118-TEST2.",
-    ])
-      expect(text).toContain(part);
+    expect(text).toBe(
+      [
+        "Hello Pathirana Hardware,",
+        "",
+        "I would like to request a quotation.",
+        "",
+        "Quotation Reference: PHQ-261118-TEST2",
+        "",
+        "Customer Name: Test Customer",
+        "Contact Number: 0712345678",
+        "",
+        "Requested Items:",
+        "1. Test Cement — Quantity: 10 bag",
+        "2. Test TOR Bars — Quantity: 2.5",
+        "",
+        "Delivery/Pickup: Delivery",
+        "Location: Chilaw",
+        "Delivery Address: Test address",
+        "Additional Notes: Test notes",
+        "",
+        "I attached 1 reference photo to this request on your website.",
+        "",
+        "Please review my request and confirm prices, stock availability and delivery arrangements.",
+        "",
+        "Thank you.",
+      ].join("\n"),
+    );
+    // No private photo links, prices or confirmations in the message.
+    expect(text).not.toMatch(/https?:|supabase|LKR|confirmed/i);
+    await expect(wa).toHaveAccessibleName(/Continue to WhatsApp/);
+    // Exactly one WhatsApp tab was opened automatically, and it carries the same message.
+    await expect.poll(() => tabs.length).toBe(1);
+    expect(tabs[0]).toBe(href);
   });
 
   test("honest errors from the server (rate limit), nothing claimed", async ({ page }) => {
@@ -180,10 +246,27 @@ test.describe("Request a Quotation", () => {
     await page.getByLabel("I will collect from the store").check();
     await page.getByLabel("Product 1").fill("Test item");
     await page.getByLabel("Quantity").fill("1");
-    await page.getByLabel(/may contact me/).check();
+    await page.getByLabel(/may use my submitted contact details/).check();
     await page.getByRole("button", { name: "Submit Quotation Request" }).click();
     await expect(page.getByRole("alert").filter({ hasText: "Too many requests" })).toBeVisible();
     await expect(page.locator("[data-quotation-state='saved']")).toHaveCount(0);
+    // The tab reserved for WhatsApp is closed again when nothing was saved.
+    await expect.poll(() => page.context().pages().length).toBe(1);
+
+    // Server error, photo refused, and no connection: honest message each time, never the confirmation.
+    const cases: [(r: import("@playwright/test").Route) => Promise<void>, string][] = [
+      [(r) => r.fulfill({ status: 500, json: {} }), "Our server had a problem saving your request"],
+      [(r) => r.fulfill({ status: 413, json: {} }), "A photo is too large"],
+      [(r) => r.abort("internetdisconnected"), "We could not reach our server"],
+    ];
+    for (const [handler, message] of cases) {
+      await page.unroute(`${API}/api/v1/quotations`);
+      await page.route(`${API}/api/v1/quotations`, handler);
+      await page.getByRole("button", { name: "Submit Quotation Request" }).click();
+      await expect(page.getByRole("alert").filter({ hasText: message })).toBeVisible();
+      await expect(page.locator("[data-quotation-state='saved']")).toHaveCount(0);
+      await expect(page.getByText("has received your quotation request")).toHaveCount(0);
+    }
   });
 });
 
@@ -207,12 +290,12 @@ test.describe("Product contact actions and service areas", () => {
     const detail = page.locator("[data-product-detail='test-priced']");
     const wa = detail.getByRole("link", { name: /Enquire on WhatsApp/ });
     const text = new URL((await wa.getAttribute("href"))!).searchParams.get("text")!;
-    expect(text).toContain("Product: Test Priced Item");
-    expect(text).toContain("Reference: test-priced");
-    expect(text).toContain("Price shown: LKR 2,500.00 / sheet");
-    expect(text).toMatch(/Link: http:\/\/127\.0\.0\.1:4173\/products\/item\/\?slug=test-priced/);
-    expect(text).toContain("Quantity: [please enter]");
-    expect(text).toContain("Location: [your town or area]");
+    expect(text).toMatch(
+      /^Hello Pathirana Hardware,\n\nI am interested in Test Priced Item\.\nPrice shown: LKR 2,500\.00 \/ sheet\.\nQuantity: \[enter quantity\]\.\nMy location: \[enter location\]\.\n/,
+    );
+    // The slug is not a product reference; the local preview address is never used as the product link.
+    expect(text).not.toMatch(/Product reference|test-priced\.|127\.0\.0\.1|localhost/);
+    expect(text.endsWith("\n\nPlease confirm availability and delivery charges.")).toBe(true);
     await expect(detail.getByRole("link", { name: "Call Us" })).toHaveAttribute("href", "tel:+94712259699");
     const quote = detail.getByRole("link", { name: "Request a Quotation" });
     await expect(quote).toHaveAttribute("href", "/quotation/?product=Test%20Priced%20Item&slug=test-priced");
@@ -225,7 +308,9 @@ test.describe("Product contact actions and service areas", () => {
     await page.goto("/products/plywood/");
     const main = page.locator("[data-category-gate='active']");
     const wa = main.getByRole("link", { name: /Enquire on WhatsApp/ }).first();
-    expect(new URL((await wa.getAttribute("href"))!).searchParams.get("text")).toContain("Product: Plywood");
+    expect(new URL((await wa.getAttribute("href"))!).searchParams.get("text")).toContain(
+      "\nI am interested in Plywood.\nPrice shown: Contact for Price.\n",
+    );
     await expect(main.getByRole("link", { name: "Call Us" })).toHaveAttribute("href", "tel:+94712259699");
     await expect(main.getByRole("link", { name: "Request a Quotation" })).toHaveAttribute(
       "href",

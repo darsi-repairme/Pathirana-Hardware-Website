@@ -49,7 +49,7 @@ describe("Quotation requests", () => {
   const base = () => ({
     idempotencyKey: randomUUID(),
     customerName: "Test Customer",
-    phone: "071 234 5678",
+    phone: "0712345678",
     location: "Test Area One",
     fulfilment: "delivery",
     deliveryAddress: "Test address line",
@@ -160,8 +160,23 @@ describe("Quotation requests", () => {
       expect(JSON.stringify(res.body)).toMatch(expected);
     };
     await bad({ customerName: "" }, /customerName/);
-    await bad({ phone: "12" }, /phone/);
-    await bad({ phone: "not-a-number-here" }, /phone/);
+    await bad({ phone: "12" }, /10-digit mobile number/);
+    await bad({ phone: "not-a-number-here" }, /10-digit mobile number/);
+    // Exactly 10 digits starting with 0 — formatted, international, short or long numbers are refused.
+    for (const phone of [
+      "071 234 5678",
+      "+94712345678",
+      "7123456789",
+      "07123456789",
+      "071234567",
+      "071-234-5678",
+    ])
+      await bad({ phone }, /Please enter a valid 10-digit mobile number/);
+    // Consent is mandatory: false or missing → refused (nothing saved, never a false success).
+    const { contactConsent: _omit, ...noConsent } = base();
+    void _omit;
+    const res = await submit(noConsent).expect(400);
+    expect(JSON.stringify(res.body)).toMatch(/consent/);
     await bad({ fulfilment: "delivery", deliveryAddress: "   " }, /deliveryAddress/);
     await bad({ location: "Nowhere Listed" }, /location/);
     await bad({ location: "Other", otherLocation: "" }, /otherLocation/);
@@ -179,9 +194,25 @@ describe("Quotation requests", () => {
     // Photos: content is checked (a renamed text file is refused), and at most 5.
     await submit(base(), [Buffer.from("#!/bin/sh\necho no")]).expect(415);
     await submit(base(), [photo, photo, photo, photo, photo, photo]).expect(400);
-    // Nothing from the refused submissions was stored.
+    // Oversized photo (tests: MAX_UPLOAD_MB=1) → 413.
+    const huge = await sharp({ create: { width: 3000, height: 3000, channels: 3, background: "#808080" } })
+      .png({ compressionLevel: 0 })
+      .toBuffer();
+    expect(huge.length).toBeGreaterThan(1024 * 1024);
+    await http
+      .post("/api/v1/quotations")
+      .set("X-Forwarded-For", nextIp())
+      .field("data", JSON.stringify(base()))
+      .attach("photos", huge, { filename: "big.png", contentType: "image/png" })
+      .expect(413);
+    // Anti-spam honeypot filled (people never see it) → refused, never a false success.
+    const spam = await submit({ ...base(), website: "http://spam.example.test" }, [photo]).expect(400);
+    expect(JSON.stringify(spam.body)).toMatch(/could not be accepted/);
+    // Nothing from the refused submissions was stored, and no photo was written.
     const n = (await db.query("SELECT count(*)::int AS n FROM quotation_requests")).rows[0].n;
     expect(n).toBe(3);
+    const photos = (await db.query("SELECT count(*)::int AS n FROM quotation_photos")).rows[0].n;
+    expect(photos).toBe(2); // only the 2 from the first (valid) request
   });
 
   it("is rate limited per client", async () => {

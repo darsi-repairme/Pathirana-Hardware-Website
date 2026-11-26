@@ -9,11 +9,12 @@ import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { FacebookIcon } from "@/components/ui/FacebookIcon";
 import { GalleryBrowser } from "@/components/gallery/GalleryBrowser";
+import { T, TRich } from "@/i18n/I18nProvider";
 
 export const metadata: Metadata = {
   ...createPageMetadata({
     title: "Gallery",
-    description: `Photographs of ${business.legalName} on Pallama Road, Bangadeniya, Sri Lanka, with illustrations of the building materials and hardware we supply.`,
+    description: `Photographs of ${business.shortName} on Pallama Road, Bangadeniya, Sri Lanka, with illustrations of the building materials and hardware we supply.`,
     path: "/gallery/",
   }),
 };
@@ -34,26 +35,30 @@ export default function GalleryPage() {
         crumb="Gallery"
         note="Illustration"
         title={
-          <>
-            Inside <span className="text-gold-soft">Pathirana Hardware</span>
-          </>
+          <TRich nodes={{ name: <span className="text-gold-soft">Pathirana Hardware</span> }}>{"Inside {name}"}</TRich>
         }
-        intro={<p>Our store on Pallama Road, Bangadeniya, and the materials and hardware we supply.</p>}
+        intro={
+          <p>
+            <T>Our store on Pallama Road, Bangadeniya, and the materials and hardware we supply.</T>
+          </p>
+        }
       />
 
       <section aria-labelledby="gallery-title" className="bg-cream pt-10 pb-20 lg:pt-12 lg:pb-24">
         <Container size="wide">
           <h2 id="gallery-title" className="sr-only">
-            Gallery
+            <T>Gallery</T>
           </h2>
           {total ? (
             <GalleryBrowser collections={collections} />
           ) : (
             <div role="status" className="reveal mx-auto max-w-xl py-10 text-center">
               <Camera aria-hidden="true" className="mx-auto size-9 text-brass-ink" />
-              <h3 className="mt-4 font-display text-3xl font-medium text-charcoal">Photographs coming soon</h3>
+              <h3 className="mt-4 font-display text-3xl font-medium text-charcoal">
+                <T>Photographs coming soon</T>
+              </h3>
               <p className="mt-3 text-ink-muted">
-                We only share real photographs of our own store. Follow our Facebook page for updates.
+                <T>We only share real photographs of our own store. Follow our Facebook page for updates.</T>
               </p>
               <div className="mt-6">
                 <Button href={business.social.facebook} external icon={<FacebookIcon />} arrow="external">

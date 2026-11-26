@@ -1,6 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { whatsappProductEnquiryHref } from "@/content/business";
+import { useEnquiryHref, useT } from "@/i18n/I18nProvider";
 import { getCategory, type ProductType } from "@/content/products";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { ProductTypeVisual } from "./ProductVisual";
@@ -19,6 +21,9 @@ export function ProductTypeCard({
   sizes?: string;
 }) {
   const Heading = headingLevel;
+  const t = useT();
+  const enquiryHref = useEnquiryHref();
+  const name = t(product.name);
   const category = getCategory(product.category);
   const href = `/products/${product.slug}/`;
   return (
@@ -28,7 +33,7 @@ export function ProductTypeCard({
         <ProductTypeVisual product={product} sizes={sizes} decorative />
         {category ? (
           <span className="absolute top-2 left-2 max-w-[calc(100%-1rem)] rounded-full bg-forest-900/85 px-2 py-0.5 text-[0.68rem] font-semibold text-gold-soft backdrop-blur-sm max-sm:leading-snug sm:top-3 sm:left-3 sm:max-w-none sm:px-3 sm:py-1 sm:text-xs">
-            {category.title}
+            {t(category.title)}
           </span>
         ) : null}
       </div>
@@ -36,26 +41,28 @@ export function ProductTypeCard({
         <Heading className="font-display text-xl font-semibold text-forest sm:text-2xl">
           {/* Stretched link: the whole card opens the product page. */}
           <Link href={href} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
-            {product.name}
+            {name}
           </Link>
         </Heading>
-        <p className="mt-1.5 text-[0.95rem] leading-relaxed text-ink-muted sm:mt-2 sm:text-base">{product.summary}</p>
+        <p className="mt-1.5 text-[0.95rem] leading-relaxed text-ink-muted sm:mt-2 sm:text-base">
+          {t(product.summary)}
+        </p>
         <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-3 sm:gap-3 sm:pt-5">
           <span className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-forest">
-            View details
+            {t("View details")}
             <ArrowRight
               aria-hidden="true"
               className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
             />
           </span>
           <a
-            href={whatsappProductEnquiryHref(product.enquiryName)}
+            href={enquiryHref({ name, price: null, path: href })}
             target="_blank"
             rel="noopener noreferrer"
             className="relative z-10 inline-flex size-11 items-center justify-center rounded-full bg-[#177a42] text-white shadow-[0_10px_20px_-12px_rgb(23_122_66/0.9)] transition-colors duration-200 hover:bg-[#11653a]"
           >
             <WhatsAppIcon className="size-5" />
-            <span className="sr-only">Enquire about {product.name} on WhatsApp (opens in a new tab)</span>
+            <span className="sr-only">{t("Enquire about {name} on WhatsApp (opens in a new tab)", { name })}</span>
           </a>
         </div>
       </div>

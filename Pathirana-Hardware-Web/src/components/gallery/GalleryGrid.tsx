@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react";
 import type { ReactNode } from "react";
 import type { GalleryImage } from "@/content/gallery";
+import { useT } from "@/i18n/I18nProvider";
 
 type Props = {
   images: GalleryImage[];
@@ -37,7 +38,7 @@ function collageTile(i: number, n: number) {
   const start = i - (i % 8);
   const right = (start / 8) % 2 === 1;
   if (i === start) {
-    return `col-span-2 row-span-2 sm:col-span-6 lg:col-span-6 ${right ? "lg:col-start-7" : ""}`;
+    return `col-span-2 sm:col-span-6 sm:row-span-2 lg:col-span-6 ${right ? "lg:col-start-7" : ""}`;
   }
   const j = i - start - 1; // 0…6
   const m = Math.min(7, n - start - 1); // smaller tiles in this segment
@@ -60,6 +61,7 @@ export function GalleryGrid({ images, trailing, layout = "feature", badge }: Pro
   const triggerRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const touchStartX = useRef<number | null>(null);
   const [index, setIndex] = useState<number | null>(null);
+  const t = useT();
 
   const count = images.length;
   const current = index !== null ? images[index] : undefined;
@@ -102,7 +104,9 @@ export function GalleryGrid({ images, trailing, layout = "feature", badge }: Pro
       <ul
         className={
           collage
-            ? "grid grid-flow-dense auto-rows-[9.5rem] grid-cols-2 gap-3 sm:auto-rows-[11rem] sm:grid-cols-6 md:gap-4 lg:auto-rows-[13.5rem] lg:grid-cols-12"
+            ? // Phones: two columns of photos with the caption written UNDER each photo (long
+              // Tamil / Sinhala captions no longer climb into the badge); sm+: captioned collage.
+              "grid grid-flow-dense grid-cols-2 gap-x-3 gap-y-4 sm:auto-rows-[11rem] sm:grid-cols-6 sm:gap-3 md:gap-4 lg:auto-rows-[13.5rem] lg:grid-cols-12"
             : `grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 md:gap-4 ${layout === "even" && count === 2 ? "" : "md:grid-cols-3"} ${layout === "even" && count % 4 === 0 ? "lg:grid-cols-4" : ""}`
         }
       >
@@ -120,7 +124,7 @@ export function GalleryGrid({ images, trailing, layout = "feature", badge }: Pro
                 }}
                 type="button"
                 onClick={() => open(i)}
-                className={`group relative block w-full flex-1 overflow-hidden rounded-[var(--radius-card)] bg-cream-deep shadow-[var(--shadow-card)] ${collage ? "h-full" : "aspect-[4/3]"}`}
+                className={`group relative block w-full flex-1 overflow-hidden rounded-[var(--radius-card)] bg-cream-deep shadow-[var(--shadow-card)] ${collage ? "aspect-[4/3] sm:aspect-auto sm:h-full" : "aspect-[4/3]"}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- static export with pre-sized responsive files */}
                 <img
@@ -144,14 +148,14 @@ export function GalleryGrid({ images, trailing, layout = "feature", badge }: Pro
                 />
                 <span
                   aria-hidden="true"
-                  className={`absolute inset-0 bg-gradient-to-t from-forest-900/60 via-transparent to-transparent transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100 ${collage && img.caption ? "opacity-100" : "opacity-0"}`}
+                  className={`absolute inset-0 bg-gradient-to-t from-forest-900/70 via-forest-900/10 to-transparent transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100 ${collage && img.caption ? "opacity-0 sm:opacity-100" : "opacity-0"}`}
                 />
                 {collage && img.caption ? (
                   <span
                     aria-hidden="true"
-                    className="absolute right-14 bottom-3 left-3 text-left text-sm leading-snug font-semibold text-white sm:bottom-4 sm:left-4"
+                    className="absolute right-14 bottom-4 left-4 hidden text-left text-sm leading-snug font-semibold text-white sm:block"
                   >
-                    {img.caption}
+                    {t(img.caption)}
                   </span>
                 ) : null}
                 <span
@@ -165,13 +169,21 @@ export function GalleryGrid({ images, trailing, layout = "feature", badge }: Pro
                     aria-hidden="true"
                     className="absolute top-3 left-3 rounded-full bg-forest-900/85 px-2.5 py-1 text-xs font-medium text-cream/90"
                   >
-                    {img.badge ?? badge}
+                    {t((img.badge ?? badge)!)}
                   </span>
                 ) : null}
-                <span className="sr-only">View larger image</span>
+                <span className="sr-only">{t("View larger image")}</span>
               </button>
               {img.caption ? (
-                <figcaption className={collage ? "sr-only" : "mt-2 text-sm text-ink-muted"}>{img.caption}</figcaption>
+                <figcaption
+                  className={
+                    collage
+                      ? "mt-2 text-sm leading-snug font-semibold text-charcoal sm:sr-only"
+                      : "mt-2 text-sm text-ink-muted"
+                  }
+                >
+                  {t(img.caption)}
+                </figcaption>
               ) : null}
             </figure>
           </li>
@@ -181,7 +193,7 @@ export function GalleryGrid({ images, trailing, layout = "feature", badge }: Pro
 
       <dialog
         ref={dialogRef}
-        aria-label="Image viewer"
+        aria-label={t("Image viewer")}
         onKeyDown={onKeyDown}
         onClick={(e) => {
           if (e.target === e.currentTarget) close();
@@ -203,7 +215,7 @@ export function GalleryGrid({ images, trailing, layout = "feature", badge }: Pro
           <div className="flex h-full flex-col" onClick={(e) => e.target === e.currentTarget && close()}>
             <div className="flex items-center justify-between px-4 py-3 sm:px-6">
               <p className="text-sm text-sage" aria-live="polite">
-                Image {index! + 1} of {count}
+                {t("Image {n} of {count}", { n: index! + 1, count })}
               </p>
               <button
                 type="button"
@@ -212,7 +224,7 @@ export function GalleryGrid({ images, trailing, layout = "feature", badge }: Pro
                 className="on-dark inline-flex size-12 items-center justify-center rounded-full text-white hover:bg-white/10"
               >
                 <X aria-hidden="true" className="size-6" />
-                <span className="sr-only">Close image viewer</span>
+                <span className="sr-only">{t("Close image viewer")}</span>
               </button>
             </div>
 
@@ -233,7 +245,7 @@ export function GalleryGrid({ images, trailing, layout = "feature", badge }: Pro
                   className="fade-enter max-h-[calc(100dvh-9rem)] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
                 />
                 {current.caption ? (
-                  <figcaption className="mt-3 px-4 text-center text-sm text-sage">{current.caption}</figcaption>
+                  <figcaption className="mt-3 px-4 text-center text-sm text-sage">{t(current.caption)}</figcaption>
                 ) : null}
               </figure>
 
@@ -245,7 +257,7 @@ export function GalleryGrid({ images, trailing, layout = "feature", badge }: Pro
                     className="on-dark absolute top-1/2 left-2 inline-flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 text-white hover:bg-white/15 sm:left-4"
                   >
                     <ChevronLeft aria-hidden="true" className="size-6" />
-                    <span className="sr-only">Previous image</span>
+                    <span className="sr-only">{t("Previous image")}</span>
                   </button>
                   <button
                     type="button"
@@ -253,7 +265,7 @@ export function GalleryGrid({ images, trailing, layout = "feature", badge }: Pro
                     className="on-dark absolute top-1/2 right-2 inline-flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 text-white hover:bg-white/15 sm:right-4"
                   >
                     <ChevronRight aria-hidden="true" className="size-6" />
-                    <span className="sr-only">Next image</span>
+                    <span className="sr-only">{t("Next image")}</span>
                   </button>
                 </>
               ) : null}

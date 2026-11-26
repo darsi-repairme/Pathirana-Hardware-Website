@@ -1,6 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import path from "node:path";
 import {
   BadRequestException,
   Inject,
@@ -10,15 +8,22 @@ import {
 } from "@nestjs/common";
 import sharp, { type Metadata } from "sharp";
 import type { AuthStaff } from "../auth/auth.service";
-import { ENV, type Env } from "../config/env";
 import { AuditService } from "../database/audit.service";
 import { DatabaseService } from "../database/database.service";
+import { MEDIA_STORAGE, type MediaStorage } from "../media/media-storage";
+import { putMedia, readMedia, removeQuietly } from "../media/media-read";
 
 export const ALLOWED_UPLOAD_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 const ALLOWED_FORMATS = new Set(["jpeg", "png", "webp"]);
 const MAX_PIXELS = 40_000_000;
 const MAX_DIMENSION = 12_000;
 const SIZES = { full: 1600, thumb: 480 } as const;
+/**
+ * Smallest product image accepted (shorter side, px). Cards show the 480 px thumbnail and the detail
+ * page a 4:3 image up to ~600 px wide; below 400 px photos look blurry there (audit ADM-6, a 50×50
+ * image was accepted). Product images only — gallery, logos and photos keep their own rules.
+ */
+export const PRODUCT_IMAGE_MIN_SIDE = 400;
 export type ImageSize = keyof typeof SIZES;
 
 /**
@@ -57,25 +62,21 @@ const IMAGE_COLUMNS = `id, alt_text AS "altText", width, height, size_bytes AS "
   sort_order AS "sortOrder", is_main AS "isMain"`;
 
 /**
- * Product images. Files live under UPLOAD_DIR/products (outside any public web
- * root) with server-generated names: <uuid>.webp and <uuid>-thumb.webp.
+ * Product images, in MediaStorage area "products" (local UPLOAD_DIR or the private
+ * Supabase catalogue bucket) with server-generated names: <uuid>.webp and <uuid>-thumb.webp.
  * They are served only through the API, and only while the product is
  * published and its category active.
  */
 @Injectable()
 export class ProductImagesService {
-  private readonly dir: string;
-
   constructor(
-    @Inject(ENV) env: Env,
+    @Inject(MEDIA_STORAGE) private readonly storage: MediaStorage,
     private readonly db: DatabaseService,
     private readonly audit: AuditService,
-  ) {
-    this.dir = path.resolve(env.UPLOAD_DIR, "products");
-  }
+  ) {}
 
   private file(key: string, size: ImageSize) {
-    return path.join(this.dir, size === "thumb" ? `${key}-thumb.webp` : `${key}.webp`);
+    return size === "thumb" ? `${key}-thumb.webp` : `${key}.webp`;
   }
 
   /** Adds an image. The product's first image, or one uploaded with makeMain, becomes the main image. */
@@ -92,15 +93,19 @@ export class ProductImagesService {
     }
     const product = await this.db.one("SELECT id FROM products WHERE id = $1", [productId]);
     if (!product) throw new NotFoundException("Product not found.");
-    await inspectImage(file.buffer);
+    const meta = await inspectImage(file.buffer);
+    if (Math.min(meta.width, meta.height) < PRODUCT_IMAGE_MIN_SIDE) {
+      throw new BadRequestException(
+        `Product images must be at least ${PRODUCT_IMAGE_MIN_SIDE} × ${PRODUCT_IMAGE_MIN_SIDE} pixels (this one is ${meta.width} × ${meta.height}).`,
+      );
+    }
 
     const key = randomUUID();
     const full = await render(file.buffer, SIZES.full);
     const thumb = await render(file.buffer, SIZES.thumb);
-    await mkdir(this.dir, { recursive: true });
-    await writeFile(this.file(key, "full"), full.data, { flag: "wx" });
-    await writeFile(this.file(key, "thumb"), thumb.data, { flag: "wx" });
+    await putMedia(this.storage, "products", this.file(key, "full"), full.data);
     try {
+      await putMedia(this.storage, "products", this.file(key, "thumb"), thumb.data);
       return await this.db.tx(async (client) => {
         // Locks the product: image changes for one product are serialised (one main image).
         const locked = await client.query("SELECT 1 FROM products WHERE id = $1 FOR UPDATE", [productId]);
@@ -220,18 +225,18 @@ export class ProductImagesService {
     await this.removeFiles(row.storage_key);
   }
 
-  /** Absolute path of any image of a product, for signed-in staff (drafts included). */
-  async staffFile(productId: string, imageId: string, size: ImageSize): Promise<string> {
+  /** Any image of a product, for signed-in staff (drafts included). */
+  async staffFile(productId: string, imageId: string, size: ImageSize): Promise<Buffer> {
     const row = await this.db.one<ImageRow>(
       "SELECT id, storage_key FROM product_images WHERE id = $1 AND product_id = $2",
       [imageId, productId],
     );
     if (!row) throw new NotFoundException("Image not found.");
-    return this.file(row.storage_key, size);
+    return readMedia(this.storage, "products", this.file(row.storage_key, size));
   }
 
-  /** Absolute path of a publicly visible image, or 404. */
-  async publicFile(imageId: string, size: ImageSize): Promise<string> {
+  /** A publicly visible image (published product, active category), or 404. */
+  async publicFile(imageId: string, size: ImageSize): Promise<Buffer> {
     const row = await this.db.one<ImageRow>(
       `SELECT i.id, i.storage_key FROM product_images i
          JOIN products p ON p.id = i.product_id AND p.is_published
@@ -240,7 +245,7 @@ export class ProductImagesService {
       [imageId],
     );
     if (!row) throw new NotFoundException("Image not found.");
-    return this.file(row.storage_key, size);
+    return readMedia(this.storage, "products", this.file(row.storage_key, size));
   }
 
   /**
@@ -288,9 +293,6 @@ export class ProductImagesService {
   }
 
   private async removeFiles(key: string) {
-    await Promise.all([
-      rm(this.file(key, "full"), { force: true }),
-      rm(this.file(key, "thumb"), { force: true }),
-    ]);
+    await removeQuietly(this.storage, "products", [this.file(key, "full"), this.file(key, "thumb")]);
   }
 }

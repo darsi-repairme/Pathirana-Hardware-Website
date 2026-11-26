@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { randomBytes } from "node:crypto";
 import type { INestApplication } from "@nestjs/common";
-import { Test } from "@nestjs/testing";
+import { Test, type TestingModuleBuilder } from "@nestjs/testing";
 import { Client } from "pg";
 import request from "supertest";
 import { AppModule } from "../src/app.module";
@@ -28,6 +28,8 @@ async function freshDatabase(): Promise<string> {
 /** Nest app wired exactly like production, against its own isolated test database. */
 export async function createTestApp(
   overrides: Record<string, string> = {},
+  /** Optional provider overrides, e.g. a test double for the email provider. */
+  customize: (builder: TestingModuleBuilder) => TestingModuleBuilder = (b) => b,
 ): Promise<{ app: INestApplication; db: Client }> {
   const databaseUrl = await freshDatabase();
   const db = new Client({ connectionString: databaseUrl });
@@ -44,7 +46,9 @@ export async function createTestApp(
     LOG_LEVEL: "error",
     ...overrides,
   });
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule.forRoot(env)] }).compile();
+  const moduleRef = await customize(
+    Test.createTestingModule({ imports: [AppModule.forRoot(env)] }),
+  ).compile();
   const app = moduleRef.createNestApplication({ bodyParser: false, logger: ["error"] });
   configureApp(app, env);
   // Listen once (supertest otherwise opens and closes a server per request).

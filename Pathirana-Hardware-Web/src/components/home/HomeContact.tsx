@@ -1,11 +1,13 @@
 import Image from "next/image";
-import { Headset, Mail, Phone } from "lucide-react";
-import { business, mailHref, telHref, whatsappHref } from "@/content/business";
+import { Headset, Mail } from "lucide-react";
+import { business, mailHref, whatsappHref } from "@/content/business";
 import { images } from "@/lib/images";
 import { Button, ButtonPair } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { InView } from "@/components/ui/InView";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
+import { CallNowButton } from "./CallNowButton";
+import { T } from "@/i18n/I18nProvider";
 
 /**
  * Bottom contact band: support icon + short heading · Chat on WhatsApp ·
@@ -82,18 +84,19 @@ export function HomeContact() {
                 id="home-contact-title"
                 className="font-display text-2xl leading-tight font-semibold sm:text-[1.75rem]"
               >
-                Need Help? Get in Touch With Us!
+                <T>Need Help? Get in Touch With Us!</T>
               </h2>
               <p className="mt-1 text-sage">
-                Call or WhatsApp us on <span className="whitespace-nowrap">{business.phone.display}</span> about your
-                hardware needs.
+                <T vars={{ phone: business.phone.display }}>
+                  {"Call or WhatsApp us on {phone} about your hardware needs."}
+                </T>
               </p>
             </div>
           </div>
 
           {/* WhatsApp + Call: one equal-size pair (stacked on phones, two equal
               columns from sm), separated from the heading by a single rule on lg. */}
-          <ButtonPair className="lg:grid-cols-2 lg:border-l lg:border-gold-soft/40 lg:px-10">
+          <ButtonPair className="home-contact-pair lg:grid-cols-2 lg:border-l lg:border-gold-soft/40 lg:px-10">
             <div className="rv d1">
               {whatsappHref ? (
                 <Button
@@ -102,24 +105,16 @@ export function HomeContact() {
                   icon={<WhatsAppIcon />}
                   className="!bg-[#177a42] hover:!bg-[#11653a] max-[359px]:px-4"
                 >
-                  Chat on WhatsApp
+                  <T>Chat on WhatsApp</T>
                 </Button>
               ) : (
                 <Button href={mailHref} variant="outlineLight" icon={<Mail />}>
-                  Email Us
+                  <T>Email Us</T>
                 </Button>
               )}
             </div>
             <div className="rv d2">
-              <Button
-                href={telHref}
-                variant="gold"
-                icon={<Phone />}
-                ariaLabel={`Call now: ${business.phone.display}`}
-                className="max-[359px]:px-4"
-              >
-                Call Now · {business.phone.display}
-              </Button>
+              <CallNowButton className="max-[359px]:px-4" />
             </div>
           </ButtonPair>
 

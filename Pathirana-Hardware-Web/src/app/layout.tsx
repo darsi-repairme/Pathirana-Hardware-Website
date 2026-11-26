@@ -1,5 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import {
+  Inter,
+  Noto_Sans_Sinhala,
+  Noto_Sans_Tamil,
+  Noto_Serif_Sinhala,
+  Noto_Serif_Tamil,
+  Playfair_Display,
+} from "next/font/google";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteIntro } from "@/components/layout/SiteIntro";
@@ -8,6 +15,8 @@ import { getSiteUrl } from "@/lib/site-url";
 import { buildLocalBusinessJsonLd, serializeJsonLd } from "@/lib/structured-data";
 import { createPageMetadata } from "@/lib/metadata";
 import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
+import { I18nProvider, T } from "@/i18n/I18nProvider";
+import { LOCALE_BOOT_SCRIPT } from "@/i18n/config";
 import "./globals.css";
 
 // Playfair Display (headings, preloaded) + Inter (body). next/font self-hosts
@@ -27,12 +36,34 @@ const sans = Inter({
   preload: false,
 });
 
+// Tamil and Sinhala (self-hosted, not preloaded): split by Unicode range, so the
+// browser downloads them only when Tamil / Sinhala text is on the page.
+const tamil = Noto_Sans_Tamil({ subsets: ["tamil"], variable: "--font-noto-tamil", display: "swap", preload: false });
+const sinhala = Noto_Sans_Sinhala({
+  subsets: ["sinhala"],
+  variable: "--font-noto-sinhala",
+  display: "swap",
+  preload: false,
+});
+const tamilSerif = Noto_Serif_Tamil({
+  subsets: ["tamil"],
+  variable: "--font-noto-serif-tamil",
+  display: "swap",
+  preload: false,
+});
+const sinhalaSerif = Noto_Serif_Sinhala({
+  subsets: ["sinhala"],
+  variable: "--font-noto-serif-sinhala",
+  display: "swap",
+  preload: false,
+});
+
 const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   ...(siteUrl ? { metadataBase: siteUrl } : {}),
   title: {
-    default: `${business.legalName} | Hardware Store in Bangadeniya`,
+    default: `${business.shortName} | Hardware Store in Bangadeniya`,
     template: `%s | ${business.shortName}, Bangadeniya`,
   },
   applicationName: business.shortName,
@@ -53,24 +84,30 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       // Next.js 16: lets Next.js switch smooth scrolling off during route
       // changes, so every new page opens at the top instantly.
       data-scroll-behavior="smooth"
-      className={`${display.variable} ${sans.variable}`}
-      // SiteIntro's inline script may add "intro-seen" before hydration.
+      className={`${display.variable} ${sans.variable} ${tamil.variable} ${sinhala.variable} ${tamilSerif.variable} ${sinhalaSerif.variable}`}
+      // SiteIntro's and the language script may add classes / lang before hydration.
       suppressHydrationWarning
     >
+      <head>
+        {/* Remembered language: set <html lang> and avoid a flash of English (see i18n/config.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: LOCALE_BOOT_SCRIPT }} />
+      </head>
       <body className="flex min-h-dvh flex-col">
-        <SiteIntro />
-        <a
-          href="#main"
-          className="sr-only z-50 rounded-sm bg-forest px-4 py-3 font-semibold text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
-        >
-          Skip to main content
-        </a>
-        <SiteHeader />
-        <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
-          {children}
-        </main>
-        <SiteFooter />
-        <FloatingWhatsApp />
+        <I18nProvider>
+          <SiteIntro />
+          <a
+            href="#main"
+            className="sr-only z-50 rounded-sm bg-forest px-4 py-3 font-semibold text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+          >
+            <T>Skip to main content</T>
+          </a>
+          <SiteHeader />
+          <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
+            {children}
+          </main>
+          <SiteFooter />
+          <FloatingWhatsApp />
+        </I18nProvider>
         <script
           type="application/ld+json"
           // Safe: static, build-time data from our own config, serialised with "<" escaped.

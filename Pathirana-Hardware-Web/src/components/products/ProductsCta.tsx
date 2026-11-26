@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useT } from "@/i18n/I18nProvider";
 import Image from "next/image";
 import { Phone } from "lucide-react";
 import { business, telHref, whatsappChatHref } from "@/content/business";
@@ -13,6 +16,7 @@ import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
  * Desktop: heading · short text · WhatsApp + Call; phones: stacked.
  */
 export function ProductsCta() {
+  const t = useT();
   return (
     <section
       aria-labelledby="products-cta-title"
@@ -37,15 +41,15 @@ export function ProductsCta() {
             id="products-cta-title"
             className="font-display text-[clamp(1.6rem,6vw,2.1rem)] leading-tight font-semibold lg:text-[2.1rem]"
           >
-            Need a specific product <span className="text-gold-soft">or a bulk order?</span>
+            {t("Need a specific product")} <span className="text-gold-soft">{t("or a bulk order?")}</span>
           </h2>
           <p className="max-w-md text-sage lg:border-l lg:border-gold-soft/40 lg:pl-8">
-            Get in touch with our team and we&apos;ll be happy to assist you.{" "}
+            {t("Get in touch with our team and we will be happy to assist you.")}{" "}
             <Link
               href="/quotation/"
               className="font-semibold whitespace-nowrap text-gold-soft underline underline-offset-4 hover:text-white"
             >
-              Request a quotation
+              {t("Request a quotation")}
             </Link>
           </p>
           <ButtonPair className="mt-1 [--pair-min:13rem] lg:mt-0 lg:grid-cols-2">
@@ -55,10 +59,15 @@ export function ProductsCta() {
               icon={<WhatsAppIcon />}
               className="!bg-[#177a42] !text-white hover:!bg-[#11653a]"
             >
-              Chat on WhatsApp
+              {t("Chat on WhatsApp")}
             </Button>
-            <Button href={telHref} variant="gold" icon={<Phone />} ariaLabel={`Call now: ${business.phone.display}`}>
-              Call Now
+            <Button
+              href={telHref}
+              variant="gold"
+              icon={<Phone />}
+              ariaLabel={t("Call now: {phone}", { phone: business.phone.display })}
+            >
+              {t("Call Now")}
             </Button>
           </ButtonPair>
         </div>

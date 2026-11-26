@@ -4,12 +4,16 @@ import { ShieldCheck } from "lucide-react";
 import { business } from "@/content/business";
 import { createPageMetadata } from "@/lib/metadata";
 import { Container } from "@/components/ui/Container";
+import { BlurredTopBand } from "@/components/ui/BlurredTopBand";
+import { images } from "@/lib/images";
 import { BrandLogos } from "@/components/products/BrandLogos";
 import { CategoryShowcase } from "@/components/products/CategoryShowcase";
 import { CatalogueView, ProductCatalogue } from "@/components/products/ProductCatalogue";
 import { LiveCatalogue, LiveCatalogueView } from "@/components/products/LiveCatalogue";
 import { liveCatalogueEnabled } from "@/lib/catalogue";
 import { ProductsCta } from "@/components/products/ProductsCta";
+import { T } from "@/i18n/I18nProvider";
+import { tx } from "@/i18n/tx";
 
 export const metadata: Metadata = {
   ...createPageMetadata({
@@ -25,7 +29,7 @@ function Heading({ id, children }: { id: string; children: React.ReactNode }) {
     <div className="reveal text-center">
       <span aria-hidden="true" className="mx-auto block h-0.5 w-12 bg-brass" />
       <h2 id={id} className="mt-4 font-display text-[clamp(1.75rem,5vw,2.4rem)] font-semibold text-forest">
-        {children}
+        {tx(children)}
       </h2>
     </div>
   );
@@ -39,27 +43,20 @@ function Heading({ id, children }: { id: string; children: React.ReactNode }) {
 export default function ProductsPage() {
   return (
     <>
-      {/* 1 · Hero — compact, full-width, centred */}
-      <section
-        aria-labelledby="products-title"
-        className="on-dark relative isolate overflow-hidden bg-forest-900 text-white"
-      >
-        <div
-          aria-hidden="true"
-          className="absolute -top-40 left-1/2 -z-10 size-[36rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(232_190_79/0.16),transparent_65%)]"
+      {/* 1 · Hero — same photo band as About Us / Services (genuine store aisle, dark veil, breadcrumb). */}
+      <section aria-labelledby="products-title">
+        <BlurredTopBand
+          id="products-title"
+          image={images.aisleMaterials}
+          position="object-[50%_55%]"
+          crumb="Products"
+          title="Our Products"
+          intro={
+            <p>
+              <T>A wide range of construction and hardware products for your building needs.</T>
+            </p>
+          }
         />
-        <Container size="wide" className="py-14 text-center sm:py-16 lg:py-20">
-          <h1
-            id="products-title"
-            className="font-display text-[clamp(2.25rem,8vw,3.75rem)] leading-tight font-semibold text-cream"
-          >
-            Our Products
-          </h1>
-          <span aria-hidden="true" className="mx-auto mt-4 block h-0.5 w-16 bg-gradient-to-r from-brass to-gold-soft" />
-          <p className="mx-auto mt-4 max-w-xl text-[clamp(1rem,2.6vw,1.15rem)] leading-relaxed text-sage">
-            A wide range of construction and hardware products for your building needs.
-          </p>
-        </Container>
       </section>
 
       {/* 2 · Our Brands — the client's original logo files */}
@@ -71,7 +68,7 @@ export default function ProductsPage() {
           </div>
           <p className="reveal mx-auto mt-6 flex max-w-3xl items-start justify-center gap-2 text-center text-sm text-ink-muted">
             <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brass-ink" />
-            Brand names are shown to help you find products. They do not indicate an official partnership.
+            <T>Brand names are shown to help you find products. They do not indicate an official partnership.</T>
           </p>
         </Container>
       </section>
@@ -91,7 +88,7 @@ export default function ProductsPage() {
       >
         <Container size="wide">
           <h2 id="all-products-title" className="sr-only">
-            All products
+            <T>All products</T>
           </h2>
           {liveCatalogueEnabled() ? (
             // Built with NEXT_PUBLIC_API_URL: published products load from the API in the browser,

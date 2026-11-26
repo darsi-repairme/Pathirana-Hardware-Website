@@ -2,10 +2,23 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { KeyRound, LogOut, UserRound } from "lucide-react";
+import { Camera, KeyRound, LogOut, UserRound } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
-import { useStaff } from "@/components/AdminShell";
-import { Alert, Button, Card, Field, Input, PageHeader } from "@/components/ui";
+import { useOwnPhoto, useStaff } from "@/components/AdminShell";
+import { ProfilePhotoEditor } from "@/components/ProfilePhoto";
+import { Alert, Button, Card, Field, PageHeader, PasswordInput } from "@/components/ui";
+import { useValidation, type Rules } from "@/lib/useValidation";
+
+type PasswordForm = { current: string; next: string; confirm: string };
+const RULES: Rules<PasswordForm> = {
+  current: (v) => (String(v ?? "") ? null : "Enter your current password."),
+  next: (v) => {
+    const s = String(v ?? "");
+    if (s.length < 12) return "Use at least 12 characters.";
+    return s.length > 128 ? "Use at most 128 characters." : null;
+  },
+  confirm: (v, all) => (String(v ?? "") === all.next ? null : "The new passwords do not match."),
+};
 
 /**
  * Settings that genuinely exist: your account details, changing your own
@@ -13,30 +26,48 @@ import { Alert, Button, Card, Field, Input, PageHeader } from "@/components/ui";
  */
 export default function SettingsPage() {
   const me = useStaff();
+  const photo = useOwnPhoto();
   const router = useRouter();
   const toLogin = () => {
     router.replace("/login?signedOut=1");
     router.refresh();
   };
-  const [form, setForm] = useState({ current: "", next: "", confirm: "" });
+  const [form, setForm] = useState<PasswordForm>({ current: "", next: "", confirm: "" });
+  const v = useValidation(form, RULES);
   const [error, setError] = useState<ApiError | null>(null);
   const [saving, setSaving] = useState(false);
+  /** Changing it remounts the password fields (all hidden again). */
+  const [fieldsKey, setFieldsKey] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
 
   const change = async (e: FormEvent) => {
     e.preventDefault();
+    if (saving) return; // one request at a time
     setError(null);
-    if (form.next !== form.confirm) return setError(new ApiError(400, "The new passwords do not match."));
+    if (!v.validateAll()) return;
     setSaving(true);
     try {
       await api.post("auth/password", { currentPassword: form.current, newPassword: form.next });
-      // Every session (including this one) has ended on the API: sign in again.
-      await fetch("/api/session", { method: "DELETE", headers: { "x-ph-admin": "1" } });
-      toLogin();
     } catch (err) {
-      setError(err as ApiError);
+      const ex = err as ApiError;
+      setError(
+        ex.status === 429
+          ? new ApiError(429, "Too many attempts. Please wait a minute and try again.")
+          : ex.status === 0 || ex.status >= 500 || !(ex instanceof ApiError)
+            ? new ApiError(ex.status ?? 0, "Unable to change password. Please try again.")
+            : ex,
+      );
       setSaving(false);
+      return;
     }
+    // Changed (the API confirmed it). Clear the fields and hide them again, then — as before —
+    // every session (including this one) has ended: sign in again with the new password. Clearing
+    // this device's cookie is best effort; a failure there must not look like a failed change.
+    setForm({ current: "", next: "", confirm: "" });
+    setFieldsKey((k) => k + 1);
+    await fetch("/api/session", { method: "DELETE", headers: { "x-ph-admin": "1" } }).catch(() => {});
+    router.replace("/login?passwordChanged=1");
+    router.refresh();
   };
 
   const signOutEverywhere = async () => {
@@ -47,8 +78,21 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" description="Your account and sign-in security." />
+      <PageHeader title="Settings" description="Your account, profile photo and sign-in security." />
       <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="p-5 sm:p-6 lg:col-span-2">
+          <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-forest">
+            <Camera aria-hidden="true" className="size-5 text-brass" /> Profile photo
+          </h2>
+          <div className="mt-4">
+            <ProfilePhotoEditor
+              name={me.fullName}
+              target={{ self: true }}
+              version={photo.version}
+              onChange={photo.setVersion}
+            />
+          </div>
+        </Card>
         <Card className="p-5 sm:p-6">
           <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-forest">
             <UserRound aria-hidden="true" className="size-5 text-brass" /> Your account
@@ -61,7 +105,7 @@ export default function SettingsPage() {
                 "Role",
                 me.role === "admin"
                   ? "Admin — everything, including staff accounts"
-                  : "Editor — catalogue, delivery areas and quotation requests",
+                  : "Editor — catalogue, delivery areas, services, gallery, quotation requests and feedback",
               ],
             ].map(([k, v]) => (
               <div key={k} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2.5">
@@ -89,7 +133,7 @@ export default function SettingsPage() {
           <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-forest">
             <KeyRound aria-hidden="true" className="size-5 text-brass" /> Change password
           </h2>
-          <form onSubmit={change} className="mt-4 space-y-4">
+          <form noValidate onSubmit={change} className="mt-4 space-y-4">
             {error ? (
               <Alert>
                 {error.message}
@@ -102,40 +146,42 @@ export default function SettingsPage() {
                 ) : null}
               </Alert>
             ) : null}
-            <Field label="Current password" required>
+            <Field key={`current-${fieldsKey}`} label="Current password" required error={v.error("current")}>
               {(p) => (
-                <Input
+                <PasswordInput
                   {...p}
-                  type="password"
-                  required
                   autoComplete="current-password"
                   value={form.current}
+                  onBlur={v.blur("current")}
                   onChange={(e) => setForm({ ...form, current: e.target.value })}
                 />
               )}
             </Field>
-            <Field label="New password" required hint="At least 12 characters.">
+            <Field
+              key={`next-${fieldsKey}`}
+              label="New password"
+              required
+              hint="At least 12 characters."
+              error={v.error("next")}
+            >
               {(p) => (
-                <Input
+                <PasswordInput
                   {...p}
-                  type="password"
-                  required
-                  minLength={12}
                   maxLength={128}
                   autoComplete="new-password"
                   value={form.next}
+                  onBlur={v.blur("next")}
                   onChange={(e) => setForm({ ...form, next: e.target.value })}
                 />
               )}
             </Field>
-            <Field label="Repeat new password" required>
+            <Field key={`confirm-${fieldsKey}`} label="Repeat new password" required error={v.error("confirm")}>
               {(p) => (
-                <Input
+                <PasswordInput
                   {...p}
-                  type="password"
-                  required
                   autoComplete="new-password"
                   value={form.confirm}
+                  onBlur={v.blur("confirm")}
                   onChange={(e) => setForm({ ...form, confirm: e.target.value })}
                 />
               )}

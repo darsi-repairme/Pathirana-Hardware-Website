@@ -5,10 +5,12 @@ import { ArrowRight } from "lucide-react";
 import { useBrands, useCategories } from "@/lib/live-taxonomy";
 import { CategoryIcon } from "./CategoryVisual";
 import { TaxonomyNotice } from "./TaxonomyStates";
+import { useCategoryText, useT } from "@/i18n/I18nProvider";
 
 /** About › Our Product Categories: one row per ACTIVE category (live when available). */
 export function CategoryRowList({ className = "" }: { className?: string }) {
   const { items, status, retry } = useCategories();
+  const text = useCategoryText();
   if (status === "empty" || status === "error") {
     return (
       <div data-taxonomy-status={status} className={className}>
@@ -27,7 +29,7 @@ export function CategoryRowList({ className = "" }: { className?: string }) {
             >
               <CategoryIcon slug={c.slug} strokeWidth={1.5} className="size-5 shrink-0 text-brass" />
               <span className="min-w-0 flex-1 font-display text-lg font-medium text-charcoal group-hover:text-forest">
-                {c.title}
+                {text(c).title}
               </span>
               <ArrowRight
                 aria-hidden="true"
@@ -44,6 +46,8 @@ export function CategoryRowList({ className = "" }: { className?: string }) {
 /** Category pages › Other categories: pill links to every other ACTIVE category. */
 export function OtherCategoryPills({ current, className = "" }: { current: string; className?: string }) {
   const { items, status, retry } = useCategories();
+  const text = useCategoryText();
+  const t = useT();
   const others = items.filter((c) => c.slug !== current);
   if (status === "error" || ((status === "live" || status === "empty") && others.length === 0)) {
     return (
@@ -51,7 +55,7 @@ export function OtherCategoryPills({ current, className = "" }: { current: strin
         {status === "error" ? (
           <TaxonomyNotice status="error" kind="categories" onRetry={retry} compact />
         ) : (
-          <p className="text-sm text-ink-muted">No other categories are listed online yet.</p>
+          <p className="text-sm text-ink-muted">{t("No other categories are listed online yet.")}</p>
         )}
       </div>
     );
@@ -66,7 +70,7 @@ export function OtherCategoryPills({ current, className = "" }: { current: strin
               className="group inline-flex min-h-12 items-center gap-2.5 rounded-full border border-line-strong bg-white px-5 font-semibold text-forest transition-colors duration-200 hover:border-brass hover:bg-cream-deep"
             >
               <CategoryIcon slug={c.slug} strokeWidth={1.6} className="size-4 text-brass-ink" />
-              {c.title}
+              {text(c).title}
               <ArrowRight
                 aria-hidden="true"
                 className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"

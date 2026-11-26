@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CircleCheck, CircleX, Clock, Package } from "lucide-react";
-import { whatsappProductEnquiryHref } from "@/content/business";
+import { useDynamicText, useEnquiryHref, useLocale, useT } from "@/i18n/I18nProvider";
+import { LOCALE_META } from "@/i18n/config";
 import {
   AVAILABILITY_LABEL,
   formatDate,
@@ -16,6 +17,7 @@ import {
   type LiveImage,
   type LiveProduct,
 } from "@/lib/catalogue";
+import { whatsappCta } from "@/components/ui/Button";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { IconPanel } from "./ProductVisual";
 
@@ -27,13 +29,14 @@ const AVAILABILITY_STYLE: Record<Availability, { className: string; icon: typeof
 
 export function AvailabilityBadge({ availability }: { availability: Availability }) {
   const { className, icon: Icon } = AVAILABILITY_STYLE[availability];
+  const t = useT();
   return (
     <span
       data-availability={availability}
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${className}`}
     >
       <Icon aria-hidden="true" className="size-3.5" />
-      {AVAILABILITY_LABEL[availability]}
+      {t(AVAILABILITY_LABEL[availability])}
     </span>
   );
 }
@@ -44,11 +47,12 @@ export function AvailabilityBadge({ availability }: { availability: Availability
  */
 export function PriceTag({ product, size = "md" }: { product: LiveProduct; size?: "md" | "lg" }) {
   const price = priceOf(product);
+  const { t, locale } = useLocale();
   const unit = product.unit ? <span className="text-sm font-normal text-ink-muted"> / {product.unit}</span> : null;
   if (price.contactForPrice || !price.final) {
     return (
       <p data-price="contact" className={`font-semibold text-forest ${size === "lg" ? "text-2xl" : "text-lg"}`}>
-        Contact for Price
+        {t("Contact for Price")}
       </p>
     );
   }
@@ -58,25 +62,27 @@ export function PriceTag({ product, size = "md" }: { product: LiveProduct; size?
       {d ? (
         <p className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-ink-muted line-through">
-            <span className="sr-only">Original price: </span>
+            <span className="sr-only">{t("Original price:")} </span>
             {formatLkr(price.original!)}
           </span>
           <span className="rounded-full bg-logo-red px-2 py-0.5 text-xs font-semibold text-white">
-            {d.type === "percentage" ? `${formatPercent(d.value)} off` : `Save ${formatLkr(d.amount)}`}
+            {d.type === "percentage"
+              ? t("{percent} off", { percent: formatPercent(d.value) })
+              : t("Save {amount}", { amount: formatLkr(d.amount) })}
           </span>
         </p>
       ) : null}
       <p
         className={`font-display font-semibold text-forest ${size === "lg" ? "mt-1 text-[2rem] leading-tight" : "text-xl"}`}
       >
-        {d ? <span className="sr-only">Offer price: </span> : null}
+        {d ? <span className="sr-only">{t("Offer price:")} </span> : null}
         {formatLkr(price.final)}
         {unit}
       </p>
       {d && size === "lg" ? (
         <p className="mt-1 text-sm text-ink-muted">
-          You save {formatLkr(d.amount)}
-          {d.endsOn ? ` · offer ends ${formatDate(d.endsOn)}` : ""}
+          {t("You save {amount}", { amount: formatLkr(d.amount) })}
+          {d.endsOn ? ` · ${t("offer ends {date}", { date: formatDate(d.endsOn, LOCALE_META[locale].htmlLang) })}` : ""}
         </p>
       ) : null}
     </div>
@@ -114,7 +120,15 @@ export function LiveProductImage({
 
 /** Listing card in the existing card style, with unit, price and availability. */
 export function LiveProductCard({ product }: { product: LiveProduct }) {
-  const meta = [product.category.name, ...product.brands.map((b) => b.name)].join(" · ");
+  const t = useT();
+  const pick = useDynamicText();
+  const enquiryHref = useEnquiryHref();
+  const name = pick(product.name, product.translations, "name");
+  const summary = pick(product.summary, product.translations, "summary");
+  const meta = [
+    pick(product.category.name, product.category.translations, "name"),
+    ...product.brands.map((b) => b.name),
+  ].join(" · ");
   return (
     <article
       data-product={product.slug}
@@ -134,22 +148,27 @@ export function LiveProductCard({ product }: { product: LiveProduct }) {
             href={productHref(product.slug)}
             className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
           >
-            {product.name}
+            {name}
           </Link>
         </h3>
-        {product.summary ? (
-          <p className="mt-1.5 text-[0.95rem] leading-relaxed text-ink-muted">{product.summary}</p>
-        ) : null}
+        {summary ? <p className="mt-1.5 text-[0.95rem] leading-relaxed text-ink-muted">{summary}</p> : null}
         <div className="mt-auto pt-4">
           <PriceTag product={product} />
           <a
-            href={whatsappProductEnquiryHref(product.name)}
+            href={enquiryHref({
+              name,
+              price: priceOf(product),
+              unit: product.unit,
+              path: productHref(product.slug),
+              // Live products load in the browser; the origin is used only if it is public.
+              origin: typeof window === "undefined" ? null : window.location.origin,
+            })}
             target="_blank"
             rel="noopener noreferrer"
-            className="relative z-10 mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#177a42] px-4 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#11653a]"
+            className={`${whatsappCta} mt-4`}
           >
-            <WhatsAppIcon className="size-4" /> Enquire on WhatsApp
-            <span className="sr-only"> about {product.name} (opens in a new tab)</span>
+            <WhatsAppIcon className="size-4" /> {t("Enquire on WhatsApp")}
+            <span className="sr-only"> {t("about {name} (opens in a new tab)", { name })}</span>
           </a>
         </div>
       </div>

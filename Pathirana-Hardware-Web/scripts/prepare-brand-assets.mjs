@@ -153,7 +153,9 @@ const SOURCES = [
   "pathirana-logo-transparent.png",
   "pathirana-logo-transparent-light.png",
   "pathirana-hero-helmet-banner.png",
-  "pathirana-shop-about.png",
+  // Storefront photo, cropped to leave out the baked-in blue contact panel (the original
+  // public/images/pathirana-shop-about.png is kept unchanged).
+  { file: "pathirana-shop-about-display.png", dir: ASSETS },
   { file: "pathirana-logo-mark.png", dir: ASSETS },
   { file: "pathirana-shop-front.jpg", dir: ASSETS },
   { file: "pathirana-plumbing.jpg", dir: ASSETS },
@@ -163,7 +165,8 @@ const SOURCES = [
   { file: "pathirana-cta-banner.png", dir: ASSETS },
   { file: "pathirana-hero-construction.png", dir: ASSETS },
   { file: "pathirana-hero-materials.png", dir: ASSETS },
-  { file: "pathirana_hardware_storefront.png", dir: ASSETS },
+  // Storefront artwork with "(Pvt) Ltd." removed from the sign (original kept in assets/images/).
+  { file: "pathirana_hardware_storefront-display.png", dir: ASSETS },
   { file: "pathirana-footer-artwork.png", dir: ASSETS },
   { file: "premium_plywood_showroom_display.png", dir: ASSETS },
   { file: "forest_green_luxury_door_and_window_showroom.png", dir: ASSETS },

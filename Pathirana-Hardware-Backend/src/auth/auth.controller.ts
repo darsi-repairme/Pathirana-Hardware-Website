@@ -1,7 +1,10 @@
-import { Body, Controller, Get, HttpCode, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { IsEmail, IsString, MaxLength, MinLength } from "class-validator";
+import type { Request } from "express";
+import { clientSourceOf, loginTracker } from "../common/client-identity";
 import { AuthService, type AuthStaff } from "./auth.service";
+import { SignInSourceLimit } from "./sign-in-limits";
 import { CurrentStaff, StaffAuthGuard } from "./staff-auth.guard";
 
 class ChangePasswordBody {
@@ -18,12 +21,17 @@ class LoginBody {
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
-  /** 5 attempts per minute per client, on top of the per-account lockout. */
+  /**
+   * 5 attempts per minute per client source and email, at most 60 per minute per client source
+   * (all emails), on top of the failure limits in AuthService. Keyed by email too, so a client
+   * hammering one address does not block sign-ins to other accounts from a shared address.
+   */
   @Post("login")
   @HttpCode(200)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  login(@Body() body: LoginBody) {
-    return this.auth.login(body.email, body.password);
+  @Throttle({ default: { limit: 5, ttl: 60_000, getTracker: loginTracker } })
+  @SignInSourceLimit()
+  login(@Body() body: LoginBody, @Req() req: Request) {
+    return this.auth.login(body.email, body.password, clientSourceOf(req));
   }
 
   @Get("me")

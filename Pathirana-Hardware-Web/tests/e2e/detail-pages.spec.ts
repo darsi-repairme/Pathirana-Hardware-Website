@@ -75,11 +75,13 @@ test.describe("Detail pages", () => {
       );
       const wa = page.locator("main a[href^='https://wa.me/94712259699?text=']").first();
       await expect(wa).toHaveAttribute("target", "_blank");
-      // Batch 5C: the product's own enquiry carries its details and quantity / location placeholders.
+      // Client format: product name, displayed price (product types: Contact for Price), placeholders.
       const text = new URL((await wa.getAttribute("href"))!).searchParams.get("text")!;
-      expect(text).toContain(`Product: ${name}`);
-      expect(text).toContain("Quantity: [please enter]");
-      expect(text).toContain("Location: [your town or area]");
+      expect(text).toMatch(new RegExp(`^Hello Pathirana Hardware,\\n\\nI am interested in ${name}\\.\\n`));
+      expect(text).toContain("\nPrice shown: Contact for Price.\n");
+      expect(text).toContain("\nQuantity: [enter quantity].\nMy location: [enter location].\n");
+      expect(text).not.toMatch(/Product reference|localhost|127\.0\.0\.1/);
+      expect(text.endsWith("\n\nPlease confirm availability and delivery charges.")).toBe(true);
       await expect(page.locator("main a[href='tel:+94712259699']").first()).toBeVisible();
       await expect(page.locator("main").getByRole("link", { name: "Request a Quotation" })).toHaveAttribute(
         "href",

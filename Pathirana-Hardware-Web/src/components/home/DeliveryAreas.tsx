@@ -8,6 +8,7 @@ import { Container } from "@/components/ui/Container";
 import { InView } from "@/components/ui/InView";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { HomeEyebrow } from "./HomeEyebrow";
+import { useDynamicText, useLocale } from "@/i18n/I18nProvider";
 
 /** loading → fetching areas · ready → areas listed · none → API not configured / unreachable / no areas */
 type Load = "loading" | "ready" | "none";
@@ -17,8 +18,6 @@ type Result =
   /** API unavailable or no areas listed: never claims coverage. */
   | { kind: "unconfirmed"; query: string; reason: "offline" | "unlisted" }
   | null;
-
-const areaLabel = (a: DeliveryArea) => (a.district ? `${a.name}, ${a.district}` : a.name);
 
 /**
  * Home › "Do We Deliver to Your Area?"
@@ -39,6 +38,10 @@ export function DeliveryAreas() {
   const [query, setQuery] = useState("");
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<Result>(null);
+  const { t, locale } = useLocale();
+  const pick = useDynamicText();
+  const areaName = (a: DeliveryArea) => pick(a.name, a.translations, "name");
+  const areaLabel = (a: DeliveryArea) => (a.district ? `${areaName(a)}, ${a.district}` : areaName(a));
 
   // Load the approved areas (for suggestions) once the section nears the screen.
   useEffect(() => {
@@ -91,9 +94,10 @@ export function DeliveryAreas() {
   // The WhatsApp enquiry always names the area the visitor typed (or the matched area).
   const typed = query.trim();
   const askHref = whatsappEnquiryHref(
-    result?.kind === "yes"
-      ? `delivery to ${areaLabel(result.area)}`
-      : `delivery to ${typed || (result ? result.query : "") || "my area"}`,
+    t("delivery to {area}", {
+      area: result?.kind === "yes" ? areaLabel(result.area) : typed || (result ? result.query : "") || t("my area"),
+    }),
+    locale,
   );
 
   return (
@@ -103,10 +107,6 @@ export function DeliveryAreas() {
       data-delivery-state={load}
       className="on-dark relative isolate overflow-hidden bg-forest-900 py-14 text-white lg:py-20"
     >
-      <div
-        aria-hidden="true"
-        className="absolute -right-32 -bottom-40 -z-10 size-[34rem] rounded-full bg-[radial-gradient(circle,rgb(232_190_79/0.14),transparent_65%)]"
-      />
       <Container size="wide">
         <InView className="reveal-group grid items-center gap-10 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16">
           <div className="min-w-0 text-center md:text-left">
@@ -117,19 +117,19 @@ export function DeliveryAreas() {
               id={`${id}-title`}
               className="rv d1 mt-4 font-display text-[clamp(1.85rem,6vw,2.6rem)] leading-tight font-semibold"
             >
-              Do We Deliver to <span className="text-gold-soft">Your Area?</span>
+              {t("Do We Deliver to")} <span className="text-gold-soft">{t("Your Area?")}</span>
             </h2>
 
             <div className="rv d2">
               <p className="mx-auto mt-4 max-w-md leading-relaxed text-sage md:mx-0">
-                Type your town or postal code and check — or ask our team to confirm delivery to your site.
+                {t("Type your town or postal code and check — or ask our team to confirm delivery to your site.")}
               </p>
               <form
                 onSubmit={onSubmit}
                 className="mx-auto mt-6 grid max-w-lg gap-3 sm:grid-cols-[minmax(0,1fr)_auto] md:mx-0"
               >
                 <label htmlFor={`${id}-area`} className="sr-only">
-                  Your town, area or postal code
+                  {t("Your town, area or postal code")}
                 </label>
                 <div className="relative min-w-0">
                   <MapPin
@@ -144,7 +144,7 @@ export function DeliveryAreas() {
                     enterKeyHint="search"
                     maxLength={80}
                     required
-                    placeholder="Your town or postal code"
+                    placeholder={t("Your town or postal code")}
                     value={query}
                     onChange={(e) => {
                       setQuery(e.target.value);
@@ -155,7 +155,7 @@ export function DeliveryAreas() {
                   {areas.length ? (
                     <datalist id={`${id}-areas`}>
                       {areas.map((a) => (
-                        <option key={a.id} value={a.name}>
+                        <option key={a.id} value={areaName(a)}>
                           {areaLabel(a)}
                         </option>
                       ))}
@@ -168,7 +168,7 @@ export function DeliveryAreas() {
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-brass px-6 font-semibold whitespace-nowrap text-charcoal transition-colors hover:bg-gold-soft disabled:opacity-70"
                 >
                   <Search aria-hidden="true" className="size-4" />
-                  {checking ? "Checking…" : "Check Availability"}
+                  {checking ? t("Checking…") : t("Check Availability")}
                 </button>
               </form>
 
@@ -177,9 +177,15 @@ export function DeliveryAreas() {
                   <div className="flex items-start gap-3 rounded-2xl border border-gold-soft/30 bg-white/5 p-4 text-left">
                     <CircleCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-gold-soft" />
                     <div>
-                      <p className="font-semibold">Yes — we deliver to {areaLabel(result.area)}.</p>
-                      {result.area.notes ? <p className="mt-1 text-sm text-sage">{result.area.notes}</p> : null}
-                      <p className="mt-1 text-sm text-sage">Message us to arrange your delivery.</p>
+                      <p className="font-semibold">
+                        {t("Yes — we deliver to {area}.", { area: areaLabel(result.area) })}
+                      </p>
+                      {result.area.notes ? (
+                        <p className="mt-1 text-sm text-sage">
+                          {pick(result.area.notes, result.area.translations, "notes")}
+                        </p>
+                      ) : null}
+                      <p className="mt-1 text-sm text-sage">{t("Message us to arrange your delivery.")}</p>
                     </div>
                   </div>
                 ) : result ? (
@@ -188,13 +194,16 @@ export function DeliveryAreas() {
                     <div>
                       <p className="font-semibold">
                         {result.kind === "no"
-                          ? `“${result.query}” is not on our listed delivery areas yet.`
-                          : `Please confirm delivery with our team.`}
+                          ? t("“{area}” is not on our listed delivery areas yet.", { area: result.query })
+                          : t("Please confirm delivery with our team.")}
                       </p>
                       <p className="mt-1 text-sm text-sage">
                         {result.kind === "no"
-                          ? "Ask us — we may still be able to help."
-                          : `We can’t confirm delivery to “${result.query}” online right now. Send us your location on WhatsApp and we’ll let you know.`}
+                          ? t("Ask us — we may still be able to help.")
+                          : t(
+                              "We can’t confirm delivery to “{area}” online right now. Send us your location on WhatsApp and we’ll let you know.",
+                              { area: result.query },
+                            )}
                       </p>
                     </div>
                   </div>
@@ -208,15 +217,15 @@ export function DeliveryAreas() {
                 className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#177a42] px-6 font-semibold text-white transition-colors hover:bg-[#11653a]"
               >
                 <WhatsAppIcon className="size-5" />
-                {result?.kind === "yes" ? "Arrange Delivery on WhatsApp" : "Ask About Delivery"}
-                <span className="sr-only"> on WhatsApp (opens in a new tab)</span>
+                {result?.kind === "yes" ? t("Arrange Delivery on WhatsApp") : t("Ask About Delivery")}
+                <span className="sr-only"> {t("on WhatsApp (opens in a new tab)")}</span>
               </a>
 
               {/* Our service areas: the ACTIVE areas staff list (no charges shown). */}
               {areas.length ? (
                 <div data-service-areas className="mx-auto mt-7 max-w-lg md:mx-0">
                   <p id={`${id}-areas-title`} className="text-sm font-semibold text-gold-soft">
-                    We deliver to
+                    {t("We deliver to")}
                   </p>
                   <ul
                     aria-labelledby={`${id}-areas-title`}
@@ -228,7 +237,7 @@ export function DeliveryAreas() {
                         className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-3.5 text-sm text-white"
                       >
                         <MapPin aria-hidden="true" className="size-3.5 text-gold-soft" />
-                        {a.name}
+                        {areaName(a)}
                       </li>
                     ))}
                   </ul>
@@ -263,7 +272,8 @@ const DRIVE_SPLINES = "0 0 1 1;0.45 0 0.55 1;0 0 1 1";
 const DRIVE_FROM = 0.07; // truck starts fully inside the frame
 const DRIVE_TO = 0.83; // and stops before the pin
 
-function DeliveryArt() {
+/** Shared with the About page's location section (no outer ring, by request). */
+export function DeliveryArt() {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const routeId = `${uid}-route`;
   const maskId = `${uid}-reveal`;
@@ -340,8 +350,6 @@ function DeliveryArt() {
           </path>
         </mask>
       </defs>
-
-      <circle cx="210" cy="130" r="118" stroke="#E8BE4F" strokeOpacity="0.18" />
 
       {/* Route + truck: fade out at the end of each loop so the restart is seamless. */}
       <g>

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { InView } from "@/components/ui/InView";
 import { BlueprintArt } from "./BlueprintArt";
+import { T } from "@/i18n/I18nProvider";
 
 /**
  * Homepage About preview — three areas: the shop-front photograph, a short
@@ -32,15 +33,19 @@ export function AboutPreview() {
                 id="about-preview-title"
                 className="mt-5 font-display text-3xl leading-tight font-semibold text-forest sm:text-[2.3rem]"
               >
-                About Pathirana Hardware
+                <T>About Pathirana Hardware</T>
               </h2>
               {/* Justified (CEO review #06) with hyphenation so lines stay even without wide word gaps. */}
               <p className="mt-4 max-w-md text-justify text-[1.05rem] leading-relaxed hyphens-auto text-ink-muted">
-                Established on 16 April 1997, Pathirana Hardware supplies hardware and building materials for homes and
-                construction projects — from cement, TOR bars, box bars and plywood to doors, windows, bathroom sets and
-                gas cylinders. The business is led today by owner Oshada Warshan Pathirana.
+                <T>
+                  Established on 16 April 1997, Pathirana Hardware supplies hardware and building materials for homes
+                  and construction projects — from cement, TOR bars, box bars and plywood to doors, windows, bathroom
+                  sets and gas cylinders. The business is led today by owner Oshada Warshan Pathirana.
+                </T>
               </p>
-              <p className="mt-3 font-display text-lg text-brass-ink italic">“Shop smarter, save bigger!”</p>
+              <p className="mt-3 font-display text-lg text-brass-ink italic">
+                “<T>Shop smarter, save bigger!</T>”
+              </p>
               <div className="mt-7">
                 <Button href="/about/" variant="gold" arrow="right">
                   Learn More

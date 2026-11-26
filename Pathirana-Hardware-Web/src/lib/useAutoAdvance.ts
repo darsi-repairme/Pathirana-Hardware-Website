@@ -9,8 +9,11 @@ type Options = {
   onAdvance: () => void;
   /** Changes on every slide change (manual or automatic) — restarts the full delay. */
   step: unknown;
-  /** Extra external pause (e.g. while dragging). */
+  /** Extra external pause (e.g. while dragging, or while hovering a specific control). */
   hold?: boolean;
+  /** Pause while the pointer rests anywhere on the region (default true). Set false when the
+   *  caller pauses only over a specific control instead (passed in via `hold`). */
+  pauseOnHover?: boolean;
 };
 
 /**
@@ -25,7 +28,10 @@ type Options = {
  * manual navigation never triggers an immediate extra change. Returns whether
  * it is currently running (e.g. to quiet live-region announcements).
  */
-export function useAutoAdvance(ref: RefObject<HTMLElement | null>, { delay, onAdvance, step, hold = false }: Options) {
+export function useAutoAdvance(
+  ref: RefObject<HTMLElement | null>,
+  { delay, onAdvance, step, hold = false, pauseOnHover = true }: Options,
+) {
   const [flags, setFlags] = useState({ reduce: true, hidden: false, offscreen: true, hover: false, focus: false });
   const advance = useRef(onAdvance);
   useEffect(() => {
@@ -73,7 +79,8 @@ export function useAutoAdvance(ref: RefObject<HTMLElement | null>, { delay, onAd
     };
   }, [ref]);
 
-  const running = !flags.reduce && !flags.hidden && !flags.offscreen && !flags.hover && !flags.focus && !hold;
+  const running =
+    !flags.reduce && !flags.hidden && !flags.offscreen && !(pauseOnHover && flags.hover) && !flags.focus && !hold;
 
   useEffect(() => {
     if (!running) return;

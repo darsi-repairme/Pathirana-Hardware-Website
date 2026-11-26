@@ -4,10 +4,12 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { HeaderSearch } from "./HeaderSearch";
+import { useT } from "@/i18n/I18nProvider";
 
 /** Search icon that expands a full-width search field under the header (below xl). */
 export function MobileSearch() {
   const [open, setOpen] = useState(false);
+  const t = useT();
   const pathname = usePathname();
 
   // Close after navigating to another page.
@@ -27,7 +29,7 @@ export function MobileSearch() {
         className="inline-flex size-11 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10"
       >
         {open ? <X aria-hidden="true" className="size-5" /> : <Search aria-hidden="true" className="size-5" />}
-        <span className="sr-only">{open ? "Close search" : "Search products"}</span>
+        <span className="sr-only">{open ? t("Close search") : t("Search products")}</span>
       </button>
       <div
         id="header-search-panel"

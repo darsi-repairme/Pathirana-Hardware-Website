@@ -1,5 +1,5 @@
 import { brandLogos, productCategories, type ProductCategory } from "@/content/products";
-import { imageSrc, type LiveBrand, type LiveCategory } from "./catalogue";
+import { imageSrc, type LiveBrand, type LiveCategory, type LiveTranslations } from "./catalogue";
 
 /**
  * Categories and brands as the public site shows them.
@@ -27,6 +27,8 @@ export type DisplayCategory = {
   /** The documented category with this slug (static page, artwork, icon), if any. */
   documented: ProductCategory | null;
   image: CategoryImage | null;
+  /** Staff translations of the live name ("name") and description ("summary"). */
+  translations?: LiveTranslations<"name" | "summary">;
 };
 
 export type DisplayBrand = {
@@ -77,10 +79,19 @@ export function toDisplayCategory(c: LiveCategory): DisplayCategory {
         height: c.image.height,
       } as const)
     : null;
+  const tr = c.translations;
+  const ownSummary = Boolean(c.description?.trim());
   return {
     slug: c.slug,
     title: c.name,
     summary: c.description?.trim() || documented?.summary || "",
+    // The summary translation only applies to the staff's own description (not the documented fallback).
+    translations: tr
+      ? {
+          ta: { name: tr.ta?.name, summary: ownSummary ? tr.ta?.description : undefined },
+          si: { name: tr.si?.name, summary: ownSummary ? tr.si?.description : undefined },
+        }
+      : undefined,
     href: categoryHref(c.slug),
     documented,
     image: uploaded ?? (documented?.image ? { kind: "bundled", key: documented.image } : null),

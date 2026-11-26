@@ -1,71 +1,65 @@
 "use client";
 
-import { Award, Boxes, ClipboardList, CircleCheck, History, Plus, Tags, Truck } from "lucide-react";
-import { formatDate, type Dashboard } from "@/lib/api";
+import Image from "next/image";
+import Link from "next/link";
+import {
+  Award,
+  BarChart3,
+  Boxes,
+  ChevronRight,
+  CircleCheck,
+  ClipboardList,
+  History,
+  Info,
+  Layers,
+  MessageSquareQuote,
+  PackageOpen,
+  Tag,
+  Truck,
+  UserRound,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
+import { formatDateTime, type Dashboard } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import { Alert, ButtonLink, Card, EmptyState, PageHeader, Spinner } from "@/components/ui";
+import { auditLabel } from "@/lib/auditLabels";
+import { Alert, Spinner } from "@/components/ui";
 import { useStaff } from "@/components/AdminShell";
 
-/** Plain-English labels for audit-log actions. */
-const ACTIONS: Record<string, string> = {
-  "category.create": "added a category",
-  "category.update": "edited a category",
-  "category.activate": "activated a category",
-  "category.deactivate": "deactivated a category",
-  "brand.create": "added a brand",
-  "brand.update": "edited a brand",
-  "brand.activate": "activated a brand",
-  "brand.deactivate": "deactivated a brand",
-  "product.create": "added a product",
-  "product.update": "edited a product",
-  "product.publish": "published a product",
-  "product.unpublish": "unpublished a product",
-  "product.image.add": "added a product image",
-  "product.image.remove": "removed a product image",
-  "delivery-area.create": "added a delivery area",
-  "delivery-area.update": "edited a delivery area",
-  "delivery-area.activate": "activated a delivery area",
-  "delivery-area.deactivate": "deactivated a delivery area",
-  "delivery-area.archive": "archived a delivery area",
-  "staff.create": "created a staff account",
-  "staff.create-initial-admin": "created the first administrator",
-  "staff.activate": "activated a staff account",
-  "staff.deactivate": "deactivated a staff account",
-  "staff.role": "changed a staff role",
-  "staff.password-reset": "reset a staff password",
-  "auth.logout": "signed out",
-  "auth.locked": "— account locked after failed sign-ins",
-  "auth.password-change": "changed their password",
-  "catalogue.seed": "loaded the confirmed catalogue structure",
-};
+type Kpi = { label: string; value: number; icon: LucideIcon; href: string };
 
+/**
+ * Dashboard (admins and editors): welcome banner, live catalogue / quotation / feedback counts from
+ * the API, an empty-catalogue hint only when there really are no products, Quick Actions, and —
+ * for admins only — Recent Activity from the audit log (the API does not send it to editors).
+ */
 export default function DashboardPage() {
   const staff = useStaff();
-  const list = useApi<Dashboard>("admin/dashboard");
-  const data = list.data ?? null;
+  const isAdmin = staff.role === "admin";
+  const res = useApi<Dashboard>("admin/dashboard");
+  const data = res.data ?? null;
 
-  const load = list.reload;
-
-  const cards = data
+  const kpis: Kpi[] = data
     ? [
-        ...(typeof data.counts.newQuotations === "number"
-          ? [
-              {
-                label: "New Quotation Requests",
-                value: data.counts.newQuotations,
-                icon: ClipboardList,
-                href: "/quotations?status=new",
-              },
-            ]
-          : []),
-        { label: "Total Products", value: data.counts.products, icon: Boxes, href: "/products" },
+        {
+          label: "New Quotation Requests",
+          value: data.counts.newQuotations ?? 0,
+          icon: ClipboardList,
+          href: "/quotations?status=new",
+        },
+        {
+          label: "Feedback Awaiting Review",
+          value: data.counts.pendingFeedback ?? 0,
+          icon: MessageSquareQuote,
+          href: "/feedback?status=pending",
+        },
         {
           label: "Published Products",
           value: data.counts.publishedProducts,
           icon: CircleCheck,
           href: "/products?status=published",
         },
-        { label: "Categories", value: data.counts.categories, icon: Tags, href: "/categories" },
+        { label: "Categories", value: data.counts.categories, icon: Tag, href: "/categories" },
         { label: "Brands", value: data.counts.brands, icon: Award, href: "/brands" },
         {
           label: "Active Delivery Areas",
@@ -76,90 +70,212 @@ export default function DashboardPage() {
       ]
     : [];
 
-  return (
-    <>
-      <PageHeader
-        title={`Welcome, ${staff.fullName.split(" ")[0]}`}
-        description="An overview of the website catalogue and delivery areas."
-        actions={
-          <>
-            <ButtonLink href="/products/new" icon={<Plus aria-hidden="true" className="size-4" />}>
-              Add Product
-            </ButtonLink>
-            <ButtonLink
-              href="/delivery-areas?new=1"
-              variant="gold"
-              icon={<Truck aria-hidden="true" className="size-4" />}
-            >
-              Add Delivery Area
-            </ButtonLink>
-          </>
-        }
-      />
+  const actions: { label: string; href: string; icon: LucideIcon }[] = [
+    { label: "Add Product", href: "/products/new", icon: Boxes },
+    { label: "Add Category", href: "/categories?new=1", icon: Layers },
+    { label: "Add Brand", href: "/brands?new=1", icon: Tag },
+    { label: "Manage Delivery Areas", href: "/delivery-areas", icon: Truck },
+  ];
 
-      {list.error ? <Alert onRetry={load}>{list.error}</Alert> : null}
-      {!data && !list.error ? <Spinner /> : null}
+  return (
+    <div className="space-y-5 sm:space-y-6" data-dashboard={staff.role}>
+      <h1 className="sr-only">Dashboard</h1>
+
+      {/* Welcome banner */}
+      <section
+        aria-labelledby="welcome-title"
+        className="relative isolate overflow-hidden rounded-[1.5rem] bg-forest-900 text-white shadow-[var(--shadow-card)]"
+      >
+        <div className="absolute inset-y-0 right-0 -z-10 w-full sm:w-[64%] lg:w-[58%]">
+          <Image
+            src="/brand/dashboard-banner.webp"
+            alt=""
+            fill
+            priority
+            sizes="(min-width: 1024px) 50vw, (min-width: 640px) 64vw, 100vw"
+            className="[mask-image:linear-gradient(to_right,transparent,#000_30%)] object-cover object-[70%_center] opacity-40 sm:opacity-100"
+          />
+        </div>
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,var(--color-forest-900)_0%,var(--color-forest)_38%,rgb(15_93_58/0.55)_58%,transparent_78%)]"
+        />
+        <div className="max-w-xl px-5 py-7 sm:px-8 sm:py-9 lg:py-10">
+          <p className="flex items-center gap-3 text-xs font-semibold tracking-[0.26em] text-gold-soft uppercase">
+            <span aria-hidden="true" className="h-8 w-0.5 rounded-full bg-gold-soft" />
+            Welcome back
+          </p>
+          <h2
+            id="welcome-title"
+            className="mt-2 font-display text-[clamp(1.6rem,4.5vw,2.25rem)] leading-tight font-semibold"
+          >
+            Pathirana Hardware Admin
+          </h2>
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-white/85 sm:text-[0.95rem]">
+            {isAdmin
+              ? "Manage your product catalogue, quotations, feedback, staff and deliveries all in one place."
+              : "Manage your product catalogue, quotations, feedback and deliveries all in one place."}
+          </p>
+        </div>
+      </section>
+
+      {res.error ? <Alert onRetry={res.reload}>{res.error}</Alert> : null}
+      {!data && !res.error ? <Spinner label="Loading the latest figures…" /> : null}
 
       {data ? (
         <>
-          <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-            {cards.map(({ label, value, icon: Icon, href }) => (
-              <li key={label} className="min-w-0 last:max-lg:col-span-2">
-                <a
-                  href={href}
-                  className="group flex h-full flex-col rounded-[var(--radius-card)] border border-line/70 bg-paper p-4 shadow-[var(--shadow-card)] transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-brass/50 sm:p-5"
-                >
-                  <span className="inline-flex size-10 items-center justify-center rounded-full bg-forest-50 text-brass">
-                    <Icon aria-hidden="true" strokeWidth={1.75} className="size-5" />
-                  </span>
-                  <span className="mt-3 font-display text-3xl font-semibold text-forest [font-variant-numeric:lining-nums_tabular-nums] sm:mt-4">
-                    {value}
-                  </span>
-                  <span className="mt-1 text-sm text-ink-muted">{label}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
+            {/* Catalogue overview */}
+            <Link
+              href="/products"
+              data-kpi="Total Products"
+              className="relative isolate flex min-h-44 flex-col overflow-hidden rounded-[1.25rem] bg-[linear-gradient(140deg,var(--color-forest)_0%,var(--color-forest-900)_100%)] p-5 text-white shadow-[var(--shadow-card)] sm:p-6"
+            >
+              <span className="flex items-center gap-3">
+                <span className="inline-flex size-11 items-center justify-center rounded-xl bg-white/10 text-gold-soft ring-1 ring-gold-soft/40">
+                  <BarChart3 aria-hidden="true" className="size-5" />
+                </span>
+                <span className="font-display text-lg font-semibold">Catalogue Overview</span>
+              </span>
+              <span className="mt-auto pt-6 font-display text-6xl leading-none font-semibold tabular-nums">
+                {data.counts.products}
+              </span>
+              <span className="mt-2 text-sm text-white/85">Total Products</span>
+              <span aria-hidden="true" className="absolute right-5 bottom-5 -z-10 flex items-end gap-1.5 opacity-35">
+                {[22, 34, 28, 46, 58].map((h) => (
+                  <span key={h} className="w-3 rounded-t bg-gold-soft" style={{ height: h }} />
+                ))}
+              </span>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 300 60"
+                preserveAspectRatio="none"
+                className="absolute inset-x-0 bottom-0 -z-10 h-10 w-full text-gold-soft/60"
+              >
+                <path d="M0 60C90 30 190 25 300 0V60Z" fill="currentColor" fillOpacity="0.25" />
+              </svg>
+            </Link>
 
-          {data.counts.products === 0 && data.counts.categories === 0 ? (
-            <div className="mt-4">
-              <Alert tone="info">
-                The catalogue is empty. Start by adding the confirmed categories, then add products and publish them
-                when they are ready.
-              </Alert>
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+              {kpis.map(({ label, value, icon: Icon, href }) => (
+                <li key={label} className="min-w-0">
+                  <Link
+                    href={href}
+                    data-kpi={label}
+                    className="group flex h-full min-h-28 items-center gap-3 rounded-[1.25rem] border border-line/70 bg-paper p-4 shadow-[var(--shadow-card)] transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-brass/50"
+                  >
+                    <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-forest-50 text-brass ring-1 ring-line/70">
+                      <Icon aria-hidden="true" strokeWidth={1.75} className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-display text-[1.75rem] leading-none font-semibold text-forest tabular-nums">
+                        {value}
+                      </span>
+                      <span className="mt-1 block text-[0.82rem] leading-snug text-ink-muted">{label}</span>
+                    </span>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="hidden size-4 shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5 sm:block"
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {data.counts.products === 0 ? (
+            <div
+              role="status"
+              data-empty-catalogue
+              className="flex items-start gap-3 rounded-[1.25rem] border border-brass/40 bg-[linear-gradient(90deg,#fbf3dd,#f8f1e0)] px-4 py-4 text-sm text-charcoal sm:items-center sm:px-5"
+            >
+              <Info aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-brass-ink sm:mt-0" />
+              <p className="min-w-0 flex-1">
+                <strong className="font-semibold">The catalogue is empty.</strong> Start by adding the confirmed
+                categories, then add products and publish them when they are ready.
+              </p>
+              <PackageOpen aria-hidden="true" className="hidden size-8 shrink-0 text-brass sm:block" />
             </div>
           ) : null}
 
-          <Card className="mt-6">
-            <div className="flex items-center gap-2 border-b border-line/70 px-5 py-4">
-              <History aria-hidden="true" className="size-4 text-brass" />
-              <h2 className="font-display text-lg font-semibold text-forest">Recent activity</h2>
-            </div>
-            {data.activity.length ? (
-              <ol className="divide-y divide-line/60">
-                {data.activity.map((a) => (
-                  <li
-                    key={a.id}
-                    className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-3 text-sm"
+          <div className={`grid gap-4 ${isAdmin ? "lg:grid-cols-2" : ""}`}>
+            {isAdmin ? (
+              <section
+                aria-labelledby="activity-title"
+                data-recent-activity
+                className="min-w-0 rounded-[1.25rem] border border-line/70 bg-paper shadow-[var(--shadow-card)]"
+              >
+                <div className="flex items-center justify-between gap-3 px-5 py-4">
+                  <h2
+                    id="activity-title"
+                    className="flex items-center gap-2 font-display text-lg font-semibold text-forest"
                   >
-                    <span className="min-w-0">
-                      <span className="font-semibold text-charcoal">{a.staffName ?? "System"}</span>{" "}
-                      <span className="text-ink-muted">{ACTIONS[a.action] ?? a.action}</span>
-                    </span>
-                    <time dateTime={a.createdAt} className="text-xs whitespace-nowrap text-ink-muted">
-                      {formatDate(a.createdAt)}
-                    </time>
+                    <History aria-hidden="true" className="size-5 text-brass" /> Recent Activity
+                  </h2>
+                  <Link
+                    href="/audit-log"
+                    className="inline-flex min-h-9 items-center gap-1 rounded-full border border-brass/40 bg-cream px-3 text-xs font-semibold text-brass-ink hover:border-brass"
+                  >
+                    View All <ChevronRight aria-hidden="true" className="size-3.5" />
+                  </Link>
+                </div>
+                {data.activity?.length ? (
+                  <ol className="divide-y divide-line/60 border-t border-line/70">
+                    {data.activity.map((a) => (
+                      <li key={a.id} className="flex items-center gap-3 px-5 py-3 text-sm">
+                        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-forest-50 text-forest">
+                          <UserRound aria-hidden="true" className="size-4" />
+                        </span>
+                        <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                          <span className="font-semibold text-charcoal">{a.staffName ?? "System"}</span>{" "}
+                          <span className="text-ink-muted">{auditLabel(a.action)}</span>
+                        </span>
+                        <time dateTime={a.createdAt} className="shrink-0 text-xs whitespace-nowrap text-ink-muted">
+                          {formatDateTime(a.createdAt)}
+                        </time>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="border-t border-line/70 px-5 py-6 text-sm text-ink-muted">
+                    No activity yet. Changes made by staff will appear here.
+                  </p>
+                )}
+              </section>
+            ) : null}
+
+            <section
+              aria-labelledby="actions-title"
+              className="flex min-w-0 flex-col rounded-[1.25rem] border border-line/70 bg-paper p-5 shadow-[var(--shadow-card)]"
+            >
+              <h2 id="actions-title" className="flex items-center gap-2 font-display text-lg font-semibold text-forest">
+                <Zap aria-hidden="true" className="size-5 text-brass" /> Quick Actions
+              </h2>
+              {/* Balanced 2 × 2 grid that fills the panel (equal cards, equal gaps); one column only
+                  on the narrowest phones. */}
+              <ul
+                data-quick-actions
+                className="mt-4 grid flex-1 auto-rows-fr grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4"
+              >
+                {actions.map(({ label, href, icon: Icon }) => (
+                  <li key={label} className="min-w-0">
+                    <Link
+                      href={href}
+                      data-quick-action={label}
+                      className="group flex h-full min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border border-line/70 bg-cream/60 px-3 py-5 text-center text-sm font-semibold text-charcoal transition-[border-color,background-color,transform] duration-200 outline-none hover:-translate-y-0.5 hover:border-brass hover:bg-cream focus-visible:ring-2 focus-visible:ring-brass sm:text-[0.95rem] lg:min-h-32"
+                    >
+                      <span className="inline-flex size-12 items-center justify-center rounded-full bg-paper text-forest ring-1 ring-line/70 transition-colors group-hover:ring-brass/60">
+                        <Icon aria-hidden="true" strokeWidth={1.75} className="size-6" />
+                      </span>
+                      <span className="leading-snug [overflow-wrap:break-word]">{label}</span>
+                    </Link>
                   </li>
                 ))}
-              </ol>
-            ) : (
-              <EmptyState icon={<History />} title="No activity yet">
-                Changes made by staff will appear here.
-              </EmptyState>
-            )}
-          </Card>
+              </ul>
+            </section>
+          </div>
         </>
       ) : null}
-    </>
+    </div>
   );
 }

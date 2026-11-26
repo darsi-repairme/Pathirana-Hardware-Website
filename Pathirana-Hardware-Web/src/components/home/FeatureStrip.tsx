@@ -1,6 +1,8 @@
 import { ShieldCheck, Store, Truck, UsersRound, type LucideIcon } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { InView } from "@/components/ui/InView";
+import { T } from "@/i18n/I18nProvider";
+import { TRegion } from "@/i18n/I18nProvider";
 
 const features: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: ShieldCheck, title: "Quality Products", text: "Durable & reliable" },
@@ -13,7 +15,7 @@ const delays = ["d1", "d2", "d3", "d4"];
 
 export function FeatureStrip() {
   return (
-    <section aria-label="Why visit us" className="border-b border-line/60 bg-cream">
+    <TRegion as="section" label="Why visit us" className="border-b border-line/60 bg-cream">
       <Container size="wide">
         <InView as="div" className="reveal-group">
           {/* Below lg: 2 × 2 with soft gold dividers (feature-grid); from lg the approved row. */}
@@ -28,12 +30,12 @@ export function FeatureStrip() {
                   strokeWidth={1.5}
                   className="size-8 shrink-0 text-brass transition-transform duration-500 group-hover:-translate-y-1 motion-reduce:transition-none min-[480px]:size-10"
                 />
-                <div>
+                <div className="min-w-0">
                   <h2 className="text-[0.95rem] font-semibold text-charcoal max-[479px]:leading-snug min-[480px]:text-base">
-                    {title}
+                    <T>{title}</T>
                   </h2>
                   <p className="mt-0.5 text-[0.82rem] text-ink-muted max-[479px]:leading-snug min-[480px]:text-sm">
-                    {text}
+                    <T>{text}</T>
                   </p>
                 </div>
               </li>
@@ -41,6 +43,6 @@ export function FeatureStrip() {
           </ul>
         </InView>
       </Container>
-    </section>
+    </TRegion>
   );
 }

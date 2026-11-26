@@ -1,4 +1,3 @@
-import { createReadStream } from "node:fs";
 import {
   BadRequestException,
   Body,
@@ -128,7 +127,7 @@ export class PublicBrandLogosController {
     const file = await this.media.publicLogo(key);
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("Cache-Control", "public, max-age=3600");
-    return new StreamableFile(createReadStream(file), { type: "image/webp" });
+    return new StreamableFile(file, { type: "image/webp" });
   }
 }
 
@@ -191,6 +190,6 @@ export class AdminBrandsController {
   async viewLogo(@Param("id", ParseUUIDPipe) id: string, @Res({ passthrough: true }) res: Response) {
     const file = await this.media.staffLogo(id);
     res.setHeader("Cache-Control", "private, no-store");
-    return new StreamableFile(createReadStream(file), { type: "image/webp" });
+    return new StreamableFile(file, { type: "image/webp" });
   }
 }

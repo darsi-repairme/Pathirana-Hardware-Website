@@ -73,11 +73,12 @@ export type BusinessConfig = {
 };
 
 export const business: BusinessConfig = {
+  /** Legal company name — internal records and structured data only; never shown as the display name. */
   legalName: "Pathirana Hardware (Pvt) Ltd.",
   shortName: "Pathirana Hardware",
   tagline: "Shop smarter, save bigger!",
   description:
-    "Pathirana Hardware (Pvt) Ltd. is a hardware store on Pallama Road, Bangadeniya, Sri Lanka. Call or email to ask about hardware and building supplies.",
+    "Pathirana Hardware is a hardware store on Pallama Road, Bangadeniya, Sri Lanka. Call or email to ask about hardware and building supplies.",
   address: {
     lines: ["Pathirana Hardware", "Pallama Road", "Bangadeniya", "Sri Lanka"],
     street: "Pallama Road",
@@ -103,7 +104,11 @@ export const business: BusinessConfig = {
   },
   servicesListedOnFacebook: ["Delivery", "Reservations"],
 
-  openingHours: null,
+  // Client-confirmed (2026-11-20). Public holidays may differ — no special schedule is invented.
+  openingHours: [
+    { days: "Monday – Saturday", hours: "7:30 AM – 7:00 PM" },
+    { days: "Sunday", hours: "Closed" },
+  ],
   whatsappE164: "+94712259699",
   verifiedMapUrl: null,
   geo: null,
@@ -142,39 +147,16 @@ export const whatsappChatHref = `https://wa.me/${(business.whatsappE164 ?? busin
  * service name, e.g. whatsappEnquiryHref("Plywood"). The text is URL-encoded.
  * (A normal chat link — no automated replies or ordering system.)
  */
-export function whatsappEnquiryHref(subject: string): string {
-  const text = `Hello Pathirana Hardware, I would like to enquire about ${subject}.`;
+export function whatsappEnquiryHref(subject: string, locale: "en" | "ta" | "si" = "en"): string {
+  // Tamil / Sinhala: faithful versions of the English wording (pending native-speaker review).
+  const text =
+    locale === "ta"
+      ? `வணக்கம் Pathirana Hardware, ${subject} பற்றி விசாரிக்க விரும்புகிறேன்.`
+      : locale === "si"
+        ? `ආයුබෝවන් Pathirana Hardware, ${subject} ගැන විමසීමට කැමැත්තෙමි.`
+        : `Hello Pathirana Hardware, I would like to enquire about ${subject}.`;
   return `${whatsappChatHref}?text=${encodeURIComponent(text)}`;
 }
 
-/**
- * WhatsApp chat pre-filled with a product enquiry, e.g.
- * "Hello Pathirana Hardware,\nI would like to enquire about plywood.\nPlease share available options and prices."
- */
-/**
- * Product page enquiry (Batch 5C): product name, reference (if any), the price shown on the page,
- * the page link, and placeholders for the quantity and location. The customer edits and sends it.
- */
-export function whatsappProductDetailHref(p: {
-  name: string;
-  reference?: string | null;
-  price?: string | null;
-  link?: string | null;
-}): string {
-  const text = [
-    "Hello Pathirana Hardware,",
-    "I would like to enquire about this product:",
-    `Product: ${p.name}`,
-    ...(p.reference ? [`Reference: ${p.reference}`] : []),
-    `Price shown: ${p.price ?? "not listed — please share the current price"}`,
-    ...(p.link ? [`Link: ${p.link}`] : []),
-    "Quantity: [please enter]",
-    "Location: [your town or area]",
-  ].join("\n");
-  return `${whatsappChatHref}?text=${encodeURIComponent(text)}`;
-}
-
-export function whatsappProductEnquiryHref(product: string): string {
-  const text = `Hello Pathirana Hardware,\nI would like to enquire about ${product}.\nPlease share available options and prices.`;
-  return `${whatsappChatHref}?text=${encodeURIComponent(text)}`;
-}
+// Product-specific enquiries (cards, product pages, search results) all use the
+// shared generator in src/lib/product-enquiry.ts.

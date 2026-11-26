@@ -1,8 +1,10 @@
 import { type INestApplication, ValidationPipe, VersioningType } from "@nestjs/common";
 import type { NestExpressApplication } from "@nestjs/platform-express";
+import { JwtService } from "@nestjs/jwt";
 import helmet from "helmet";
+import { clientIdentity } from "./common/client-identity";
 import type { Env } from "./config/env";
-import { HttpExceptionFilter } from "./common/http-exception.filter";
+import { bodyParserErrors, HttpExceptionFilter } from "./common/http-exception.filter";
 import { requestContext } from "./common/request-context.middleware";
 
 /**
@@ -14,9 +16,21 @@ export function configureApp(app: INestApplication, env: Env): INestApplication 
   const express = app as NestExpressApplication;
   express.disable("x-powered-by");
   if (env.TRUST_PROXY) express.set("trust proxy", 1);
-  express.useBodyParser("json", { limit: "100kb" });
-
+  // Request ID first, so body errors (invalid / too large JSON) are logged and answered with it too.
   app.use(requestContext);
+  express.useBodyParser("json", { limit: "100kb" });
+  app.use(bodyParserErrors);
+  // Client identity for rate limits / sign-in failure counting (see common/client-identity.ts).
+  const jwt = app.get(JwtService);
+  app.use(
+    clientIdentity(env.ADMIN_CLIENT_SECRET, (token) => {
+      try {
+        return jwt.verify<{ sub?: unknown }>(token);
+      } catch {
+        return null;
+      }
+    }),
+  );
   app.use(
     helmet({
       // JSON API: nothing to render, so lock the document policy right down.

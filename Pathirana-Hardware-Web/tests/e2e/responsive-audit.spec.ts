@@ -221,7 +221,7 @@ test.describe("Responsive audit (homepage)", () => {
       const about = await page
         .locator("section[aria-labelledby='about-preview-title'] img")
         .evaluate((i: HTMLImageElement) => i.currentSrc);
-      expect(about).toMatch(/pathirana_hardware_storefront-\d+\.webp$/);
+      expect(about).toMatch(/pathirana_hardware_storefront-display-\d+\.webp$/);
       await audit(page, `${w}px`);
       expect(errors).toEqual([]);
     });

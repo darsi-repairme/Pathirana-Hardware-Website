@@ -1,4 +1,13 @@
+"use client";
+
 import { InView } from "@/components/ui/InView";
+import { useT } from "@/i18n/I18nProvider";
+
+/** First word, then the rest — each line animates in as two parts. */
+const split = (s: string): [string, string] => {
+  const i = s.indexOf(" ");
+  return i < 0 ? [s, ""] : [s.slice(0, i), s.slice(i + 1)];
+};
 
 /**
  * Architectural blueprint line-art with "Build Better… Live Better…".
@@ -9,14 +18,17 @@ import { InView } from "@/components/ui/InView";
  * Static and fully visible under reduced motion / without JS.
  */
 export function BlueprintArt({ className = "" }: { className?: string }) {
+  const t = useT();
+  const [b1, b2] = split(t("Build Better..."));
+  const [l1, l2] = split(t("Live Better..."));
   return (
     <InView className={`blueprint relative ${className}`}>
       <p className="bp-words font-display text-[1.9rem] leading-tight font-semibold whitespace-nowrap text-forest italic sm:text-[2.1rem] xl:text-[1.85rem] 2xl:text-[2.1rem]">
         <span className="block">
-          <span className="bp-word bp-w1">Build</span> <span className="bp-word bp-w2">Better...</span>
+          <span className="bp-word bp-w1">{b1}</span> <span className="bp-word bp-w2">{b2}</span>
         </span>
         <span className="block pl-8">
-          <span className="bp-word bp-w3">Live</span> <span className="bp-word bp-w4">Better...</span>
+          <span className="bp-word bp-w3">{l1}</span> <span className="bp-word bp-w4">{l2}</span>
         </span>
       </p>
       <svg

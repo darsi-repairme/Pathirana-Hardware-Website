@@ -286,7 +286,7 @@ test("staff changes reach every public section without a rebuild", async ({ page
     await page
       .locator("input[type=file][name=photos]")
       .setInputFiles({ name: "ref.png", mimeType: "image/png", buffer: await png(1400, 900, "#0f5d3a") });
-    await page.getByLabel(/may contact me/).check();
+    await page.getByLabel(/may use my submitted contact details/).check();
     page.context().once("page", (p) => p.close().catch(() => {}));
     await page.getByRole("button", { name: "Submit Quotation Request" }).click();
     const ref = (await page.locator("[data-quotation-reference]").textContent())!.trim();

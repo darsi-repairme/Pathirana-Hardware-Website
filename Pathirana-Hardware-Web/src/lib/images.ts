@@ -6,14 +6,14 @@ function img(src: keyof typeof meta, alt: string) {
 }
 
 export const images = {
-  logo: img("/images/pathirana-logo-transparent.png", "Pathirana Hardware (Pvt) Ltd. logo"),
-  logoLight: img("/images/pathirana-logo-transparent-light.png", "Pathirana Hardware (Pvt) Ltd. logo"),
+  logo: img("/images/pathirana-logo-transparent.png", "Pathirana Hardware logo"),
+  logoLight: img("/images/pathirana-logo-transparent-light.png", "Pathirana Hardware logo"),
   hero: img(
     "/images/pathirana-hero-helmet-banner.png",
     "Yellow safety helmet with the Pathirana Hardware mark, resting on bricks beside a trowel, tape measure, spirit level, hammer and work gloves",
   ),
   shop: img(
-    "/images/pathirana-shop-about.png",
+    "/images/pathirana-shop-about-display.png",
     "Pathirana Hardware storefront with its red signboard, glass entrance and building materials displayed outside",
   ),
   /** Stand-alone brand mark (transparent, symbol only). Source: assets/images/. */
@@ -52,8 +52,8 @@ export const images = {
   ),
   /** HD storefront artwork (illustrative — not a photograph of the premises). */
   storefront: img(
-    "/images/pathirana_hardware_storefront.png",
-    "Illustration of a Pathirana Hardware (Pvt) Ltd. storefront with the red and green logo, a green and white facade and glass shop windows",
+    "/images/pathirana_hardware_storefront-display.png",
+    "Illustration of a Pathirana Hardware storefront with the red and green logo, a green and white facade and glass shop windows",
   ),
   /** Product category artwork (illustrative — not photographs of the shop). */
   plywood: img(

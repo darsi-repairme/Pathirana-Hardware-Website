@@ -1,17 +1,22 @@
 import Image from "next/image";
 import { ChevronRight, Mail, MapPin, Phone } from "lucide-react";
 import { business, mailHref, mapsHref, telHref, whatsappChatHref } from "@/content/business";
-import { footerNav, legalNav } from "@/content/navigation";
-import { services } from "@/content/services";
+import { footerNav } from "@/content/navigation";
+import { FooterServices } from "./FooterServices";
 import { images } from "@/lib/images";
 import { Logo } from "@/components/ui/Logo";
 import { SiteLink } from "@/components/ui/SiteLink";
 import { SocialLinks } from "@/components/ui/SocialIcons";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { CurrentYear } from "@/components/ui/CurrentYear";
+import { T, TRegion } from "@/i18n/I18nProvider";
 
-/** Website copyright holder — confirmed by the client; the business branding stays Pathirana Hardware. */
-const COPYRIGHT_HOLDER = "RepairMe (Pvt) Ltd.";
+/** Copyright line shows the customer-facing brand name (2026-11-20 request; previously "RepairMe (Pvt) Ltd."). */
+/**
+ * Copyright attribution requested by the owner (2026-11-21). Customer-facing branding elsewhere
+ * stays "Pathirana Hardware". PENDING final client/legal confirmation before production.
+ */
+const COPYRIGHT_HOLDER = "RepairMe (Pvt) Ltd";
 
 /** Shared centred container: same max width as the header, fluid side padding. */
 const frame = "mx-auto w-full max-w-[1440px] px-[clamp(1.5rem,4vw,4.5rem)]";
@@ -84,19 +89,24 @@ export function SiteFooter() {
               <span className="block font-display text-xl font-semibold whitespace-nowrap text-cream">
                 Pathirana Hardware
               </span>
-              <span className="block text-xs font-semibold tracking-[0.2em] text-gold-soft uppercase">(Pvt) Ltd.</span>
             </span>
           </SiteLink>
-          <p className="mt-5 font-display text-lg text-gold-soft italic">“{business.tagline}”</p>
-          <p className="mt-3 max-w-xs text-[0.95rem] leading-relaxed text-cream/85">
-            Hardware and building materials for homes and construction projects.
+          <p className="mt-5 font-display text-lg text-gold-soft italic">
+            “<T>{business.tagline}</T>”
           </p>
-          <p className="mt-3 text-sm font-semibold text-cream/70">Established 16 April 1997</p>
+          <p className="mt-3 max-w-xs text-[0.95rem] leading-relaxed text-cream/85">
+            <T>Hardware and building materials for homes and construction projects.</T>
+          </p>
+          <p className="mt-3 text-sm font-semibold text-cream/70">
+            <T>Established 16 April 1997</T>
+          </p>
         </div>
 
         {/* 2 · Quick links */}
-        <nav aria-label="Footer">
-          <h2 className={heading}>Quick Links</h2>
+        <TRegion as="nav" label="Footer">
+          <h2 className={heading}>
+            <T>Quick Links</T>
+          </h2>
           <ul className={list}>
             {footerNav.map((item) => (
               <li key={item.href}>
@@ -105,34 +115,26 @@ export function SiteFooter() {
                     aria-hidden="true"
                     className="size-3.5 shrink-0 text-gold-soft transition-transform duration-200 group-hover:translate-x-0.5"
                   />
-                  {item.label}
+                  <T>{item.label}</T>
                 </SiteLink>
               </li>
             ))}
           </ul>
-        </nav>
+        </TRegion>
 
         {/* 3 · Services */}
-        <nav aria-label="Our services">
-          <h2 className={heading}>Our Services</h2>
-          <ul className={list}>
-            {services.map((s) => (
-              <li key={s.id}>
-                <SiteLink href={`/services/${s.id}/`} className={`group inline-flex items-center gap-2 ${link}`}>
-                  <ChevronRight
-                    aria-hidden="true"
-                    className="size-3.5 shrink-0 text-gold-soft transition-transform duration-200 group-hover:translate-x-0.5"
-                  />
-                  {s.shortTitle}
-                </SiteLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        <TRegion as="nav" label="Our services">
+          <h2 className={heading}>
+            <T>Our Services</T>
+          </h2>
+          <FooterServices list={list} link={link} />
+        </TRegion>
 
         {/* 4 · Contact & follow */}
         <div className="col-span-2 sm:col-span-1">
-          <h2 className={heading}>Contact Us</h2>
+          <h2 className={heading}>
+            <T>Contact Us</T>
+          </h2>
           <ul className={list}>
             <li>
               <a href={telHref} className={`flex items-center gap-3 ${link}`}>
@@ -148,8 +150,11 @@ export function SiteFooter() {
                 className={`flex items-center gap-3 ${link}`}
               >
                 <WhatsAppIcon className="size-4 shrink-0 text-gold-soft" />
-                WhatsApp {business.phone.display}
-                <span className="sr-only"> (opens in a new tab)</span>
+                <T>WhatsApp</T> {business.phone.display}
+                <span className="sr-only">
+                  {" "}
+                  <T>(opens in a new tab)</T>
+                </span>
               </a>
             </li>
             <li>
@@ -166,39 +171,28 @@ export function SiteFooter() {
               <a href={mapsHref} target="_blank" rel="noopener noreferrer" className={`flex gap-3 ${link}`}>
                 <MapPin aria-hidden="true" className="mt-1 size-4 shrink-0 text-gold-soft" />
                 <address className="not-italic">
-                  {business.address.street}, {business.address.locality},{" "}
-                  <span className="whitespace-nowrap">{business.address.country}</span>
-                  <span className="sr-only"> (opens Google Maps search in a new tab)</span>
+                  <T>{`${business.address.street}, ${business.address.locality}, ${business.address.country}`}</T>
+                  <span className="sr-only">
+                    {" "}
+                    <T>(opens Google Maps search in a new tab)</T>
+                  </span>
                 </address>
               </a>
             </li>
           </ul>
-          <h2 className={`${heading} mt-7`}>Follow Us</h2>
+          <h2 className={`${heading} mt-7`}>
+            <T>Follow Us</T>
+          </h2>
           <SocialLinks className="mt-4" />
         </div>
       </div>
 
-      {/* Bottom bar: copyright left · legal links right (stacked, left-aligned and without separators on phones, where they wrap). */}
+      {/* Bottom bar: centred copyright (legal-page links removed by request). */}
       <div className="border-t border-gold-soft/15">
-        <div
-          className={`${frame} flex flex-col gap-2 pt-4 pb-[clamp(7.5rem,33vw,10rem)] text-[0.82rem] text-cream/70 sm:flex-row sm:items-center sm:justify-between sm:gap-6 lg:pb-6`}
-        >
-          {/* Copyright holder confirmed by the client (CEO review #14, option B). */}
-          <p>
-            © <CurrentYear initial={year} /> {COPYRIGHT_HOLDER} All rights reserved.
+        <div className={`${frame} pt-4 pb-[clamp(7.5rem,33vw,10rem)] text-center text-[0.82rem] text-cream/70 lg:pb-6`}>
+          <p data-copyright className="mx-auto max-w-full text-center text-balance">
+            © <CurrentYear initial={year} /> {COPYRIGHT_HOLDER}. <T>All rights reserved.</T>
           </p>
-          <nav aria-label="Legal">
-            <ul className="-ml-2 flex flex-wrap items-center sm:-mr-2 sm:ml-0">
-              {legalNav.map((item, i) => (
-                <li key={item.href} className="flex items-center">
-                  {i > 0 ? <span aria-hidden="true" className="hidden h-3 w-px bg-cream/25 sm:block" /> : null}
-                  <SiteLink href={item.href} className={`inline-flex min-h-10 items-center px-2 ${link}`}>
-                    {item.label}
-                  </SiteLink>
-                </li>
-              ))}
-            </ul>
-          </nav>
         </div>
       </div>
     </footer>

@@ -30,6 +30,12 @@ async function check(page: Page, area: string) {
 }
 
 test.describe("Home delivery areas", () => {
+  // The homepage runs several WebGL scenes, software-rendered in headless Chromium. Under parallel
+  // load, loading them and then closing the page could exceed the default 30 s ("Tearing down
+  // context exceeded the test timeout"). Same budget as the other homepage tests (the page is
+  // released before teardown in fixtures.ts).
+  test.describe.configure({ timeout: 60_000 });
+
   test("search is always available; without an API the answer is honest", async ({ page }) => {
     test.skip(Boolean(API), "build has an API configured");
     const errors = trackErrors(page);

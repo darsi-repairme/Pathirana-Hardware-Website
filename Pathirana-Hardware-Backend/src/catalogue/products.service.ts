@@ -5,6 +5,7 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -12,11 +13,18 @@ import {
   MaxLength,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from "class-validator";
 import type { PoolClient } from "pg";
 import type { AuthStaff } from "../auth/auth.service";
 import { SearchQuery, type Page } from "../common/dto";
 import { likePattern, normaliseSearch, slugify } from "../common/text";
+import {
+  cleanTranslations,
+  PRODUCT_TEXT,
+  ProductTranslations,
+  translatedTextMatch,
+} from "../common/translations";
 import { buildUpdate } from "../common/update";
 import { AuditService } from "../database/audit.service";
 import { DatabaseService } from "../database/database.service";
@@ -28,6 +36,7 @@ import {
   discountStatus,
   MONEY,
   normalisePricing,
+  pastDateProblems,
   pricingProblems,
   type Availability,
   type DiscountType,
@@ -68,6 +77,12 @@ export class CreateProductBody extends PricingBody {
   searchTerms?: string[];
   /** Only brands confirmed for this product (never inferred). */
   @IsOptional() @IsArray() @ArrayMaxSize(20) @IsUUID("all", { each: true }) brandIds?: string[];
+  /** Staff-entered Tamil / Sinhala text (migration 0006); the English fields stay the default. */
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ProductTranslations)
+  translations?: ProductTranslations;
 }
 
 export class UpdateProductBody extends PricingBody {
@@ -83,6 +98,12 @@ export class UpdateProductBody extends PricingBody {
   @MaxLength(60, { each: true })
   searchTerms?: string[];
   @IsOptional() @IsArray() @ArrayMaxSize(20) @IsUUID("all", { each: true }) brandIds?: string[];
+  /** Replaces all translations of this product (send both locales). */
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ProductTranslations)
+  translations?: ProductTranslations;
 }
 
 export class PublicationBody {
@@ -125,6 +146,23 @@ const PRICING_COLUMNS = `p.unit, p.price_lkr::text AS "priceLkr", p.contact_for_
   to_char(p.discount_starts_on, 'YYYY-MM-DD') AS "discountStartsOn",
   to_char(p.discount_ends_on, 'YYYY-MM-DD') AS "discountEndsOn", p.availability`;
 
+/**
+ * Public translations: only customer-facing text (translated search keywords stay server-side).
+ * Lists carry name + summary; the product page also carries the description. Empty → {}.
+ */
+const localeText = (alias: string, fields: string[]) =>
+  `jsonb_strip_nulls(jsonb_build_object(${["ta", "si"]
+    .map(
+      (l) =>
+        `'${l}', nullif(jsonb_strip_nulls(jsonb_build_object(${fields
+          .map((f) => `'${f}', ${alias}.translations->'${l}'->'${f}'`)
+          .join(", ")})), '{}'::jsonb)`,
+    )
+    .join(", ")}))`;
+const PUBLIC_TRANSLATIONS = `${localeText("p", ["name", "summary"])} AS translations`;
+const PUBLIC_TRANSLATIONS_FULL = `${localeText("p", ["name", "summary", "description"])} AS translations`;
+const CATEGORY_NAME_TRANSLATIONS = localeText("c", ["name"]);
+
 const COLUMN_OF: Record<string, string> = {
   name: "name",
   slug: "slug",
@@ -141,6 +179,7 @@ const COLUMN_OF: Record<string, string> = {
   discountStartsOn: "discount_starts_on",
   discountEndsOn: "discount_ends_on",
   availability: "availability",
+  translations: "translations",
 };
 
 type PricedRow = PricingFields & { unit: string | null; availability: Availability };
@@ -227,6 +266,11 @@ export class ProductsService {
         `(p.name ILIKE $? OR p.summary ILIKE $? OR p.description ILIKE $?
           OR EXISTS (SELECT 1 FROM unnest(p.search_terms) t WHERE t ILIKE $?)
           OR c.name ILIKE $?
+          OR ${translatedTextMatch("p", ["name", "summary", "description"])}
+          OR ${translatedTextMatch("c", ["name"])}
+          OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(
+                       coalesce(p.translations->'ta'->'searchTerms', '[]') || coalesce(p.translations->'si'->'searchTerms', '[]')
+                     ) t WHERE t ILIKE $?)
           OR EXISTS (SELECT 1 FROM product_brands pb JOIN brands b ON b.id = pb.brand_id
                       WHERE pb.product_id = p.id AND b.name ILIKE $?${publicOnly ? " AND b.is_active" : ""}))`,
         likePattern(term),
@@ -273,8 +317,8 @@ export class ProductsService {
   async listPublic(q: ProductQuery): Promise<Page<unknown>> {
     const { where, params } = this.filters(q, true);
     const rows = await this.db.query<PricedRow & { id: string; total: number }>(
-      `SELECT p.id, p.slug, p.name, p.summary, ${PRICING_COLUMNS},
-              json_build_object('slug', c.slug, 'name', c.name) AS category,
+      `SELECT p.id, p.slug, p.name, p.summary, ${PUBLIC_TRANSLATIONS}, ${PRICING_COLUMNS},
+              json_build_object('slug', c.slug, 'name', c.name, 'translations', ${CATEGORY_NAME_TRANSLATIONS}) AS category,
               count(*) OVER ()::int AS total
          FROM products p JOIN categories c ON c.id = p.category_id
         ${where} ORDER BY p.name LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
@@ -289,8 +333,8 @@ export class ProductsService {
 
   async getPublic(slug: string) {
     const row = await this.db.one<PricedRow & { id: string }>(
-      `SELECT p.id, p.slug, p.name, p.summary, p.description, ${PRICING_COLUMNS},
-              json_build_object('slug', c.slug, 'name', c.name) AS category
+      `SELECT p.id, p.slug, p.name, p.summary, p.description, ${PUBLIC_TRANSLATIONS_FULL}, ${PRICING_COLUMNS},
+              json_build_object('slug', c.slug, 'name', c.name, 'translations', ${CATEGORY_NAME_TRANSLATIONS}) AS category
          FROM products p JOIN categories c ON c.id = p.category_id
         WHERE p.slug = $1 AND p.is_published AND c.is_active`,
       [slug],
@@ -325,7 +369,7 @@ export class ProductsService {
   async getAdmin(id: string) {
     const row = await this.db.one<PricedRow & { id: string }>(
       `SELECT p.id, p.slug, p.name, p.category_id AS "categoryId", p.summary, p.description,
-              p.search_terms AS "searchTerms", ${PRICING_COLUMNS},
+              p.search_terms AS "searchTerms", p.translations, ${PRICING_COLUMNS},
               p.is_published AS "isPublished", p.published_at AS "publishedAt",
               p.created_at AS "createdAt", p.updated_at AS "updatedAt"
          FROM products p WHERE p.id = $1`,
@@ -390,12 +434,17 @@ export class ProductsService {
       discountEndsOn: blankToNull(body.discountEndsOn) ?? null,
     });
     throwIfInvalid(pricing);
+    const pastCreate = pastDateProblems([
+      { label: "discount start date", value: pricing.discountStartsOn },
+      { label: "discount end date", value: pricing.discountEndsOn },
+    ]);
+    if (pastCreate.length) throw new BadRequestException(pastCreate);
     const id = await this.db.tx(async (client) => {
       const { rows } = await client.query<{ id: string }>(
         `INSERT INTO products (name, slug, category_id, summary, description, search_terms, unit, price_lkr,
                                contact_for_price, discount_type, discount_value, discount_enabled,
-                               discount_starts_on, discount_ends_on, availability)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
+                               discount_starts_on, discount_ends_on, availability, translations)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
         [
           body.name.trim(),
           slug,
@@ -412,6 +461,7 @@ export class ProductsService {
           pricing.discountStartsOn,
           pricing.discountEndsOn,
           body.availability ?? "on_request",
+          JSON.stringify(cleanTranslations(body.translations, PRODUCT_TEXT)),
         ],
       );
       const productId = rows[0]!.id;
@@ -432,6 +482,10 @@ export class ProductsService {
   async update(id: string, body: UpdateProductBody, staff: AuthStaff) {
     const { brandIds, ...fields } = body;
     if (fields.searchTerms) fields.searchTerms = fields.searchTerms.map(normaliseSearch).filter(Boolean);
+    const translations =
+      fields.translations === undefined
+        ? undefined
+        : JSON.stringify(cleanTranslations(fields.translations, PRODUCT_TEXT));
     for (const k of ["unit", "priceLkr", "discountValue", "discountStartsOn", "discountEndsOn"] as const) {
       fields[k] = blankToNull(fields[k]);
     }
@@ -455,12 +509,21 @@ export class ProductsService {
         for (const k of PRICING_KEYS) if (fields[k] !== undefined) merged[k] = fields[k];
         pricing = normalisePricing(merged as PricingFields);
         throwIfInvalid(pricing);
+        const pastUpdate = pastDateProblems([
+          {
+            label: "discount start date",
+            value: pricing.discountStartsOn,
+            previous: current.discountStartsOn,
+          },
+          { label: "discount end date", value: pricing.discountEndsOn, previous: current.discountEndsOn },
+        ]);
+        if (pastUpdate.length) throw new BadRequestException(pastUpdate);
         // Write only what differs (normalisation may also clear related fields).
         const out = fields as Record<string, unknown>;
         for (const k of PRICING_KEYS) out[k] = pricing[k] !== current[k] ? pricing[k] : undefined;
       }
       if (Object.values(fields).some((v) => v !== undefined)) {
-        const u = buildUpdate({ ...fields }, COLUMN_OF);
+        const u = buildUpdate({ ...fields, translations }, COLUMN_OF);
         await client.query(`UPDATE products SET ${u.set} WHERE id = $1`, [id, ...u.params]);
         changed.push(...u.changed);
       }

@@ -6,6 +6,7 @@ import { Search, X } from "lucide-react";
 import { productCategories } from "@/content/products";
 import { productsSearchHref } from "@/lib/product-search";
 import { useBrands, useCategories } from "@/lib/live-taxonomy";
+import { useDynamicText, useT } from "@/i18n/I18nProvider";
 
 type Props = {
   className?: string;
@@ -35,6 +36,8 @@ export function HeaderSearch({
   label = "Site",
 }: Props) {
   const router = useRouter();
+  const t = useT();
+  const pick = useDynamicText();
   const [value, setValue] = useState(initialValue);
   const id = useId();
   const listId = `${id}-suggestions`;
@@ -45,8 +48,13 @@ export function HeaderSearch({
   // Without the API: the documented category terms. With it: only ACTIVE names (never deactivated ones).
   const suggestions =
     categories.status === "static"
-      ? Array.from(new Set(documentedSuggestions))
-      : Array.from(new Set([...categories.items.map((c) => c.title), ...brands.items.map((b) => b.name)]));
+      ? Array.from(new Set(documentedSuggestions.map((s) => t(s))))
+      : Array.from(
+          new Set([
+            ...categories.items.map((c) => pick(c.title, c.translations, "name")),
+            ...brands.items.map((b) => b.name),
+          ]),
+        );
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -58,14 +66,14 @@ export function HeaderSearch({
   return (
     <form
       role="search"
-      aria-label={label}
+      aria-label={t(label)}
       action="/products/"
       method="get"
       onSubmit={submit}
       className={`relative ${className}`}
     >
       <label htmlFor={`${id}-q`} className="sr-only">
-        Search products
+        {t("Search products")}
       </label>
       <Search
         aria-hidden="true"
@@ -78,7 +86,7 @@ export function HeaderSearch({
         list={listId}
         autoComplete="off"
         enterKeyHint="search"
-        placeholder="Search products..."
+        placeholder={t("Search products...")}
         value={value}
         autoFocus={autoFocus}
         onFocus={() => setUsed(true)}
@@ -109,7 +117,7 @@ export function HeaderSearch({
           }`}
         >
           <X aria-hidden="true" className="size-4" />
-          <span className="sr-only">Clear search</span>
+          <span className="sr-only">{t("Clear search")}</span>
         </button>
       ) : null}
     </form>

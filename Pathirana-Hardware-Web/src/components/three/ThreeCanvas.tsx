@@ -58,6 +58,39 @@ function disposeScene(scene: ThreeNS.Scene) {
 }
 
 /**
+ * Scenes start ONE AT A TIME, with an idle break in between. Several canvases entering the view
+ * together (e.g. the six on /services/) used to create their WebGL renderers and compile shaders
+ * in one uninterrupted run (~1 s main-thread freeze on slower phones). Active scenes go first.
+ */
+const startQueue: { run: () => Promise<void>; priority: boolean }[] = [];
+let starting = false;
+const idle = () =>
+  new Promise<void>((resolve) => {
+    if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(() => resolve(), { timeout: 120 });
+    else setTimeout(resolve, 16);
+  });
+async function pumpStarts() {
+  if (starting) return;
+  const job = startQueue.shift();
+  if (!job) return;
+  starting = true;
+  try {
+    await job.run();
+  } catch {
+    // A failed scene keeps its fallback; the next one still starts.
+  }
+  await idle();
+  starting = false;
+  void pumpStarts();
+}
+function queueStart(run: () => Promise<void>, priority: boolean) {
+  // Active scenes after earlier active ones, but before every waiting inactive one.
+  const at = priority ? startQueue.findIndex((j) => !j.priority) : -1;
+  startQueue.splice(at === -1 ? startQueue.length : at, 0, { run, priority });
+  void pumpStarts();
+}
+
+/**
  * Small, self-managing Three.js canvas (progressive enhancement).
  *
  * - three.js is imported lazily, only when the canvas nears the viewport.
@@ -86,6 +119,7 @@ export function ThreeCanvas({ create, fallback, className = "", stillTime = 1.2,
     let cleanup = () => {};
 
     const start = async () => {
+      if (disposed) return; // unmounted while waiting in the start queue
       const THREE = await import("three");
       if (disposed) return;
 
@@ -218,7 +252,7 @@ export function ThreeCanvas({ create, fallback, className = "", stillTime = 1.2,
       ([entry]) => {
         if (entry?.isIntersecting) {
           lazy.disconnect();
-          void start();
+          queueStart(start, activeRef.current);
         }
       },
       { rootMargin: "300px 0px" },

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 import { ENV, type Env } from "../config/env";
+import { pgConnectionOptions } from "./pg-tls";
 
 export type Queryable = Pick<PoolClient, "query">;
 
@@ -12,10 +13,14 @@ export class DatabaseService implements OnModuleDestroy {
 
   constructor(@Inject(ENV) env: Env) {
     this.pool = new Pool({
-      connectionString: env.DATABASE_URL,
-      ssl: env.DATABASE_SSL ? { rejectUnauthorized: true } : undefined,
-      max: 10,
-      idleTimeoutMillis: 30_000,
+      ...pgConnectionOptions(env), // TLS with full certificate verification when DATABASE_SSL=true
+      // DATABASE_POOL_MAX (default 10): keep the total of all instances under the pooler's limit.
+      max: env.DATABASE_POOL_MAX,
+      // The database is a long network round trip away (~200 ms; a NEW TLS connection ~1.5 s), so idle
+      // connections are kept for 10 minutes instead of 30 s: staff pausing briefly between pages
+      // no longer pay a reconnect. TCP keep-alive stops idle connections being dropped silently.
+      idleTimeoutMillis: 600_000,
+      keepAlive: true,
       connectionTimeoutMillis: 5_000,
       application_name: "pathirana-web-api",
     });

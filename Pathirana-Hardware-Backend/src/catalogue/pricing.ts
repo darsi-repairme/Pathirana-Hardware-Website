@@ -62,6 +62,24 @@ export function colomboToday(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Colombo" }).format(now);
 }
 
+/**
+ * Future-only business dates (offer / discount start and end): a date that is SET or CHANGED must
+ * be today or later in Sri Lanka. A stored date that is left unchanged is accepted, so editing other
+ * fields of an older record never fails, and historical values are never rewritten.
+ */
+export function pastDateProblems(
+  fields: readonly { label: string; value: string | null | undefined; previous?: string | null }[],
+  today = colomboToday(),
+): string[] {
+  const problems: string[] = [];
+  for (const f of fields) {
+    if (!f.value || f.value === (f.previous ?? null)) continue;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(f.value) && f.value < today)
+      problems.push(`The ${f.label} cannot be earlier than today (${today}).`);
+  }
+  return problems;
+}
+
 function isRealDate(d: string): boolean {
   if (!DATE.test(d)) return false;
   const [y, m, day] = d.split("-").map(Number) as [number, number, number];

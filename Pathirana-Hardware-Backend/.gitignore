@@ -5,3 +5,13 @@ storage/
 .env
 .env.*
 !.env.example
+
+# Local TLS certificates (e.g. the Supabase root CA)
+certs/
+dist-cloud/
+
+# Local test database started by `npm run db:local`
+.local-db/
+
+# Extra local builds (previews, QA copies: dist-1124, dist-sec1125, dist-qa1125, ...)
+dist-*/

@@ -5,6 +5,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createServer } from "node:net";
+import { pathToFileURL } from "node:url";
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -19,7 +20,12 @@ function freePort() {
 
 export default async function globalSetup() {
   const startedAt = Date.now();
-  const { default: EmbeddedPostgres } = await import("embedded-postgres");
+  // TEST_EMBEDDED_PG_MODULE: optional path to another embedded-postgres build (e.g. 17.x to
+  // match a hosted server's major version); default is the project's own.
+  const moduleId = process.env.TEST_EMBEDDED_PG_MODULE
+    ? pathToFileURL(process.env.TEST_EMBEDDED_PG_MODULE).href
+    : "embedded-postgres";
+  const { default: EmbeddedPostgres } = await import(moduleId);
   const base =
     process.env.TEST_PG_DIR ??
     (process.env.TEMP && /^[A-Za-z]:/.test(process.env.TEMP) ? process.env.TEMP : tmpdir());

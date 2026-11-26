@@ -1,6 +1,11 @@
 import Link from "next/link";
+import { tx } from "@/i18n/tx";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import type { ReactNode } from "react";
+
+/** Shared full-width "Enquire on WhatsApp" card button: icon and label on one centred line. */
+export const whatsappCta =
+  "wa-cta relative z-10 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#177a42] px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors duration-200 hover:bg-[#11653a] [&>svg]:shrink-0";
 
 export type ButtonVariant = "primary" | "gold" | "outline" | "outlineLight" | "light";
 
@@ -50,7 +55,9 @@ export function Button({
           {icon}
         </span>
       ) : null}
-      <span>{children}</span>
+      {/* CTA labels stay on one centred line (button groups wrap instead). Only on very narrow
+          phones (< 400px) may a long Tamil / Sinhala label wrap, centred, rather than overflow. */}
+      <span className="min-w-0 text-center min-[400px]:whitespace-nowrap">{tx(children)}</span>
       {arrow === "right" ? (
         <ArrowRight
           aria-hidden="true"
@@ -63,7 +70,7 @@ export function Button({
           className="size-4 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 motion-reduce:transition-none"
         />
       ) : null}
-      {external ? <span className="sr-only"> (opens in a new tab)</span> : null}
+      {external ? <span className="sr-only"> {tx("(opens in a new tab)")}</span> : null}
     </>
   );
 

@@ -21,7 +21,11 @@ export function SiteLink({ href, onClick, ...props }: ComponentProps<typeof Link
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(e);
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-    if (href.includes("#") || clean(href) !== clean(pathname)) return;
+    // Compare with the address actually shown, not only the router hook: right after a client
+    // navigation followed by a full page load the hook could briefly report the previous page,
+    // and a click on "Home" from another page then only scrolled to the top instead of navigating.
+    const current = typeof window === "undefined" ? pathname : window.location.pathname;
+    if (href.includes("#") || clean(href) !== clean(current)) return;
     e.preventDefault();
     if (window.location.hash) window.history.replaceState(window.history.state, "", href);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

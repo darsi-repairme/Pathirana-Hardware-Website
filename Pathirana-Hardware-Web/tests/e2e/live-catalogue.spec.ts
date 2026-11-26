@@ -99,13 +99,27 @@ test.describe("Live product catalogue", () => {
     await expect(d).toContainText("10% off");
     await expect(d).toContainText("LKR 2,250.00 / bag");
     await expect(d.locator("[data-availability]")).toHaveText("Available");
-    await expect(d.getByRole("link", { name: /Enquire on WhatsApp/ })).toHaveAttribute("href", /wa\.me/);
+    // Product card enquiry: the shared client format with the DISPLAYED (discounted) price only.
+    const waText = async (card: typeof d) => {
+      const href = (await card.getByRole("link", { name: /Enquire on WhatsApp/ }).getAttribute("href"))!;
+      expect(href.startsWith("https://wa.me/94712259699?text=")).toBe(true);
+      return new URL(href).searchParams.get("text")!;
+    };
+    const dText = await waText(d);
+    expect(dText).toMatch(
+      /^Hello Pathirana Hardware,\n\nI am interested in Test Discounted Item\.\nPrice shown: LKR 2,250\.00 \/ bag\.\nQuantity: \[enter quantity\]\.\nMy location: \[enter location\]\.\n/,
+    );
+    expect(dText).not.toMatch(/2,500|Product reference|127\.0\.0\.1|localhost/);
+    expect(dText.endsWith("\n\nPlease confirm availability and delivery charges.")).toBe(true);
 
     // Contact for Price: no price or discount; out of stock is never shown as available.
     const c = page.locator("[data-product='test-contact']");
     await expect(c.locator("[data-price]")).toHaveText("Contact for Price");
     await expect(c).not.toContainText("LKR");
     await expect(c.locator("[data-availability]")).toHaveText("Out of Stock");
+    const cText = await waText(c);
+    expect(cText).toContain("\nI am interested in Test Contact Item.\nPrice shown: Contact for Price.\n");
+    expect(cText).not.toContain("LKR");
     await expectNoBrokenImages(page);
     expect(errors).toEqual([]);
   });
@@ -193,6 +207,27 @@ test.describe("Live product catalogue", () => {
     await page.goto("/products/item/");
     await expect(page.locator("[data-product-state='not-found']")).toBeVisible();
     expect(errors.filter((e) => !/40[4]|503/.test(e))).toEqual([]);
+  });
+
+  // Audit PERF-02: on phones the footer showed below the short loading skeleton, then jumped away.
+  test("detail page on a phone: no layout shift while the product loads", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mockApi(page, () => page1([DISCOUNTED]));
+    await page.route(`${API}/api/v1/products/test-discounted`, async (r) => {
+      await new Promise((res) => setTimeout(res, 600)); // a visible loading phase
+      await r.fulfill({ json: { ...DISCOUNTED, description: "Test description." } });
+    });
+    await page.addInitScript(() => {
+      (window as unknown as { __cls: number }).__cls = 0;
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries() as PerformanceEntry[] & { value: number; hadRecentInput: boolean }[])
+          if (!e.hadRecentInput) (window as unknown as { __cls: number }).__cls += e.value;
+      }).observe({ type: "layout-shift", buffered: true });
+    });
+    await page.goto("/products/item/?slug=test-discounted");
+    await expect(page.locator("[data-product-detail='test-discounted']")).toBeVisible();
+    await page.waitForTimeout(500);
+    expect(await page.evaluate(() => (window as unknown as { __cls: number }).__cls)).toBeLessThan(0.1);
   });
 
   test("existing product-type and category URLs still work; category page lists live products", async ({ page }) => {

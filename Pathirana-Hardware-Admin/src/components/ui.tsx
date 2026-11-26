@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
+  ImageOff,
   Info,
   Loader2,
   RotateCcw,
@@ -192,26 +195,35 @@ export function Alert({
 const control =
   "w-full rounded-xl border border-line-strong bg-paper px-3.5 text-[0.95rem] text-charcoal outline-none transition-[border-color,box-shadow] placeholder:text-ink-muted/70 hover:border-brass focus:border-forest focus:shadow-[0_0_0_3px_rgb(15_93_58/0.15)] disabled:bg-cream disabled:text-ink-muted aria-[invalid=true]:border-logo-red";
 
+/**
+ * Labelled form control. Required fields show a red "*"; every other field shows "(optional)"
+ * unless its label already says so, or `optional={false}` marks a control that always has a
+ * value (e.g. a select without an empty choice), where "optional" would be misleading.
+ */
 export function Field({
   label,
   hint,
   error,
   required,
+  optional,
   children,
 }: {
   label: string;
   hint?: ReactNode;
   error?: string;
   required?: boolean;
+  optional?: boolean;
   children: (props: { id: string; "aria-describedby"?: string; "aria-invalid"?: boolean }) => ReactNode;
 }) {
   const id = useId();
   const describedBy = [hint ? `${id}-hint` : "", error ? `${id}-error` : ""].filter(Boolean).join(" ") || undefined;
+  const showOptional = !required && optional !== false && !/optional/i.test(label);
   return (
     <div className="min-w-0">
       <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-charcoal">
         {label}
         {required ? <span className="text-logo-red"> *</span> : null}
+        {showOptional ? <span className="font-normal text-ink-muted"> (optional)</span> : null}
       </label>
       {children({ id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })}
       {hint ? (
@@ -231,6 +243,30 @@ export function Field({
 export const Input = ({ className = "", ...p }: ComponentProps<"input">) => (
   <input {...p} className={`${control} h-11 ${className}`} />
 );
+
+/**
+ * Password field with its own Show / Hide button inside the right edge. Hidden by default;
+ * toggling keeps the text, the caret and the focus (the button never submits the form).
+ */
+export function PasswordInput({ className = "", ...p }: Omit<ComponentProps<"input">, "type">) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input {...p} type={show ? "text" : "password"} className={`${control} h-11 pr-12 ${className}`} />
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()} // keep focus and caret in the field
+        onClick={() => setShow((s) => !s)}
+        aria-pressed={show}
+        aria-controls={p.id}
+        className="absolute top-1/2 right-1 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-cream hover:text-forest focus-visible:outline-2 focus-visible:outline-forest"
+      >
+        {show ? <EyeOff aria-hidden="true" className="size-4" /> : <Eye aria-hidden="true" className="size-4" />}
+        <span className="sr-only">{show ? "Hide password" : "Show password"}</span>
+      </button>
+    </div>
+  );
+}
 export const Textarea = ({ className = "", ...p }: ComponentProps<"textarea">) => (
   <textarea {...p} className={`${control} min-h-28 py-2.5 ${className}`} />
 );
@@ -414,9 +450,77 @@ export function ConfirmDialog({
  * `relative` keeps absolutely positioned descendants (e.g. screen-reader-only
  * labels in row buttons) inside the scroll area instead of widening the page.
  */
+/**
+ * Data-table wrapper. Tables with class `rtable` become stacked cards below 1280 px (see
+ * globals.css); each cell gets its column heading as `data-label` so a card shows e.g. "Order: 10".
+ */
 export function TableWrap({ children }: { children: ReactNode }) {
-  return <div className="relative overflow-x-auto">{children}</div>;
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const label = () => {
+      for (const table of root.querySelectorAll("table.rtable")) {
+        const heads = [...table.querySelectorAll("thead th")].map((th) => th.textContent?.trim() ?? "");
+        for (const row of table.querySelectorAll("tbody tr"))
+          [...row.children].forEach((cell, i) => {
+            if (heads[i] && cell.getAttribute("data-label") !== heads[i]) cell.setAttribute("data-label", heads[i]);
+          });
+      }
+    };
+    label();
+    const mo = new MutationObserver(label);
+    mo.observe(root, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className="relative overflow-x-auto">
+      {children}
+    </div>
+  );
+}
+
+/** A record's action buttons: aligned and evenly spaced on wide screens, an even grid of 44 px buttons below 1280 px. */
+export function RowActions({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`row-actions ${className}`}>{children}</div>;
 }
 export const th =
   "px-4 py-3 text-left text-xs font-semibold tracking-[0.08em] text-ink-muted uppercase whitespace-nowrap";
 export const td = "px-4 py-3 align-middle text-sm";
+
+/**
+ * Staff-only image loaded through the same-origin admin gateway (private Supabase Storage
+ * behind the API). Never shows a broken-image icon: on failure it shows a short message
+ * with Retry (e.g. after a session expiry or a storage hiccup).
+ */
+export function AuthImage({
+  src,
+  alt,
+  className = "",
+  fallbackClassName = "",
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  fallbackClassName?: string;
+}) {
+  const [attempt, setAttempt] = useState(0);
+  const [failed, setFailed] = useState<string | null>(null);
+  const url = attempt ? `${src}${src.includes("?") ? "&" : "?"}r=${attempt}` : src;
+  if (failed === url) {
+    return (
+      <span
+        role="img"
+        aria-label={`${alt || "Image"} could not be loaded`}
+        className={`inline-flex flex-col items-center justify-center gap-1 rounded-lg bg-cream p-2 text-center text-xs text-ink-muted ${fallbackClassName}`}
+      >
+        <ImageOff aria-hidden="true" className="size-4" />
+        <button type="button" onClick={() => setAttempt((a) => a + 1)} className="font-semibold text-forest underline">
+          Retry
+        </button>
+      </span>
+    );
+  }
+  // eslint-disable-next-line @next/next/no-img-element -- authenticated same-origin image via the admin gateway
+  return <img src={url} alt={alt} className={className} onError={() => setFailed(url)} loading="lazy" />;
+}

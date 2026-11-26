@@ -1,0 +1,107 @@
+/** Plain-English labels for audit-log actions (Dashboard Recent Activity and the Audit Log page). */
+const ACTIONS: Record<string, string> = {
+  "auth.logout": "signed out",
+  "auth.locked": "— account locked after failed sign-ins",
+  "auth.password-change": "changed their password",
+  "catalogue.seed": "loaded the confirmed catalogue structure",
+  "category.create": "added a category",
+  "category.update": "edited a category",
+  "category.activate": "activated a category",
+  "category.deactivate": "deactivated a category",
+  "category.image.add": "added a category image",
+  "category.image.update": "updated a category image",
+  "category.image.remove": "removed a category image",
+  "brand.create": "added a brand",
+  "brand.update": "edited a brand",
+  "brand.activate": "activated a brand",
+  "brand.deactivate": "deactivated a brand",
+  "brand.logo.add": "added a brand logo",
+  "brand.logo.update": "updated a brand logo",
+  "brand.logo.remove": "removed a brand logo",
+  "product.create": "added a product",
+  "product.update": "edited a product",
+  "product.publish": "published a product",
+  "product.unpublish": "unpublished a product",
+  "product.delete": "deleted a product permanently",
+  "product.image.add": "added a product image",
+  "product.image.update": "edited a product image",
+  "product.image.remove": "removed a product image",
+  "delivery-area.create": "added a delivery area",
+  "delivery-area.update": "edited a delivery area",
+  "delivery-area.activate": "activated a delivery area",
+  "delivery-area.deactivate": "deactivated a delivery area",
+  "delivery-area.archive": "archived a delivery area",
+  "delivery-area.restore": "restored a delivery area",
+  "quotation.status": "changed a quotation request status",
+  "feedback.approve": "approved customer feedback",
+  "feedback.reject": "rejected customer feedback",
+  "feedback.hide": "hid customer feedback",
+  "feedback.restore": "restored customer feedback",
+  "service.create": "added a service",
+  "service.update": "edited a service",
+  "service.publish": "published a service",
+  "service.hide": "hid a service",
+  "service.image.add": "added a service image",
+  "service.image.replace": "replaced a service image",
+  "service.image.update": "edited a service image",
+  "service.image.remove": "removed a service image",
+  "gallery.add": "added a gallery photo",
+  "gallery.update": "edited a gallery photo",
+  "gallery.publish": "published a gallery photo",
+  "gallery.hide": "hid a gallery photo",
+  "gallery.replace": "replaced a gallery photo",
+  "gallery.delete": "deleted a gallery photo",
+  "offer.create": "added an offer",
+  "offer.update": "edited an offer",
+  "offer.publish": "published an offer",
+  "offer.hide": "hid an offer",
+  "staff.create": "created a staff account",
+  "staff.create-initial-admin": "created the first administrator",
+  "staff.create-owner": "registered as the Owner (first administrator)",
+  "staff.retire-for-owner-test": "— administrator account retired for the Owner registration test",
+  "staff.photo.add": "added a profile photo",
+  "staff.photo.replace": "changed a profile photo",
+  "staff.photo.remove": "removed a profile photo",
+  "staff.update": "edited a staff account",
+  "staff.activate": "activated a staff account",
+  "staff.deactivate": "deactivated a staff account",
+  "staff.role": "changed a staff role",
+  "staff.password-reset": "reset a staff password",
+  "staff.password-link.setup": "created a password set-up link",
+  "staff.password-link.reset": "created a password reset link",
+  "staff.password-setup.complete": "set their password from a link",
+  "staff.password-reset.complete": "reset their password from a link",
+};
+
+/** Every recorded action (for the Audit Log's Action filter). */
+export const AUDIT_ACTIONS = Object.keys(ACTIONS);
+
+/** Area (entity type) an action belongs to: "delivery-area.create" → "delivery_area". */
+export const actionArea = (action: string) =>
+  ({ "delivery-area": "delivery_area", quotation: "quotation_request", feedback: "customer_feedback" })[
+    action.split(".")[0]!
+  ] ?? action.split(".")[0]!;
+
+/** "added a product" → "Added a product" (filter option text). */
+export const actionOption = (action: string) => {
+  const s = auditLabel(action).replace(/^—\s*/, "");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
+/** "service.image.add" → "service image add" when no label exists (never shows a raw key only). */
+export const auditLabel = (action: string) => ACTIONS[action] ?? action.replace(/[.-]/g, " ");
+
+export const ENTITY_LABEL: Record<string, string> = {
+  auth: "Sign-in",
+  catalogue: "Catalogue",
+  category: "Category",
+  brand: "Brand",
+  product: "Product",
+  delivery_area: "Delivery area",
+  quotation_request: "Quotation request",
+  customer_feedback: "Customer feedback",
+  service: "Service",
+  gallery: "Gallery",
+  offer: "Offer",
+  staff: "Staff",
+};

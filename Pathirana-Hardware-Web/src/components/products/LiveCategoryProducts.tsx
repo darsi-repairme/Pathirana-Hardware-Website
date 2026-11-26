@@ -6,6 +6,7 @@ import { ArrowRight, CloudOff } from "lucide-react";
 import { fetchProducts, type LivePage } from "@/lib/catalogue";
 import { Container } from "@/components/ui/Container";
 import { LiveProductCard } from "./LiveProductParts";
+import { useT } from "@/i18n/I18nProvider";
 
 /**
  * Published products of one category, loaded from the API in the browser
@@ -14,6 +15,7 @@ import { LiveProductCard } from "./LiveProductParts";
 export function LiveCategoryProducts({ category, title }: { category: string; title: string }) {
   const [result, setResult] = useState<{ data?: LivePage; error?: true } | null>(null);
   const [retry, setRetry] = useState(0);
+  const t = useT();
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -38,14 +40,14 @@ export function LiveCategoryProducts({ category, title }: { category: string; ti
       <Container size="wide">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <h2 id="live-category-products" className="font-display text-2xl font-medium text-charcoal sm:text-3xl">
-            {title} — product list
+            {t("{name} — product list", { name: t(title) })}
           </h2>
           {data && data.total > data.items.length ? (
             <Link
               href={`/products/?category=${encodeURIComponent(category)}#all-products`}
               className="inline-flex min-h-11 items-center gap-2 font-semibold text-forest hover:text-brass-ink"
             >
-              View all {data.total} <ArrowRight aria-hidden="true" className="size-4" />
+              {t("View all {n}", { n: data.total })} <ArrowRight aria-hidden="true" className="size-4" />
             </Link>
           ) : null}
         </div>
@@ -55,13 +57,13 @@ export function LiveCategoryProducts({ category, title }: { category: string; ti
             className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-line/70 bg-white p-5 text-ink-muted"
           >
             <CloudOff aria-hidden="true" className="size-5 text-brass-ink" />
-            The online product list is temporarily unavailable.
+            {t("The online product list is temporarily unavailable.")}
             <button
               type="button"
               onClick={() => setRetry((n) => n + 1)}
               className="font-semibold text-forest underline underline-offset-4"
             >
-              Try again
+              {t("Try again")}
             </button>
           </p>
         ) : data ? (

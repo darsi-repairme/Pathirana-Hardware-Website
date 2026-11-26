@@ -19,34 +19,57 @@ import {
   SearchBox,
   Select,
   Spinner,
+  TableWrap,
+  td,
+  th,
 } from "@/components/ui";
+import { ViewOnWebsite } from "@/components/ViewOnWebsite";
+import { websitePaths } from "@/lib/website";
 
 const LIMIT = 20;
 const imageIdFrom = (url: string) => url.split("/").pop()?.split("?")[0] ?? "";
+
+/** "LKR 1,590.00" as two parts: the currency label and the amount (equal-width digits). In the
+ *  desktop table the label sits at the left of the price column and the amount at the right, so both
+ *  the "LKR" labels and the decimals form straight lines; in phone cards they stay together. */
+function Money({ amount, className = "" }: { amount: string; className?: string }) {
+  const text = formatLkr(amount);
+  return (
+    // The space between the parts keeps the text "LKR 1,590.00" for screen readers and copying.
+    <span className={`money ${className}`}>
+      <span className="money-cur">LKR</span>{" "}
+      <span className="money-amt tabular-nums">{text.replace(/^LKR\s*/, "")}</span>
+    </span>
+  );
+}
 
 /** Price as customers see it (calculated by the API), plus the discount state for staff. */
 function PriceCell({ p }: { p: ProductListItem }) {
   const { price } = p;
   if (price.contactForPrice) {
-    return <span className="text-sm font-semibold text-ink-muted">Contact for Price</span>;
+    return (
+      <span className="price-cell text-sm font-semibold whitespace-nowrap text-ink-muted" data-price="contact">
+        Contact for Price
+      </span>
+    );
   }
   return (
-    <span className="flex flex-col text-sm leading-tight md:items-end">
+    <span className="price-cell flex flex-col gap-0.5 text-sm leading-tight whitespace-nowrap" data-price="amount">
       {price.discount ? (
         <>
-          <span className="text-xs text-ink-muted line-through">{formatLkr(price.original!)}</span>
-          <span className="font-semibold text-forest">{formatLkr(price.final!)}</span>
-          <span className="text-xs font-semibold text-logo-red">
+          <Money amount={price.original!} className="text-xs text-ink-muted line-through" />
+          <Money amount={price.final!} className="font-semibold text-forest" />
+          <span className="price-note text-xs font-semibold text-logo-red">
             {price.discount.type === "percentage"
               ? `${formatPercent(price.discount.value)} off`
               : `${formatLkr(price.discount.amount)} off`}
           </span>
         </>
       ) : (
-        <span className="font-semibold text-charcoal">{formatLkr(price.final!)}</span>
+        <Money amount={price.final!} className="font-semibold text-charcoal" />
       )}
       {p.discountStatus === "scheduled" || p.discountStatus === "expired" || p.discountStatus === "disabled" ? (
-        <span className="text-xs text-ink-muted">{DISCOUNT_STATUS_LABEL[p.discountStatus]}</span>
+        <span className="price-note text-xs text-ink-muted">{DISCOUNT_STATUS_LABEL[p.discountStatus]}</span>
       ) : null}
     </span>
   );
@@ -75,15 +98,27 @@ function Thumb({ p }: { p: ProductListItem }) {
 export function ProductList({
   initialStatus,
   initialNotice = null,
+  initialQuery = "",
 }: {
   initialStatus: string;
   initialNotice?: string | null;
+  /** From the header search (?q=). */
+  initialQuery?: string;
 }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(initialNotice);
-  const [q, setQ] = useState("");
+  // The confirmation is shown once: its parameters are removed from the address (search and status
+  // filters kept), so a refresh does not show "saved" again (audit ADM-5). Back still works.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const flash = ["created", "saved", "deleted", "kept", "publishFailed"];
+    if (!flash.some((k) => url.searchParams.has(k))) return;
+    for (const k of flash) url.searchParams.delete(k);
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+  const [q, setQ] = useState(initialQuery);
   const [debounced, setDebounced] = useState("");
   const [category, setCategory] = useState("");
   const [brand, setBrand] = useState("");
@@ -227,47 +262,89 @@ export function ProductList({
         ) : null}
 
         {data && data.items.length ? (
-          <ul className="divide-y divide-line/60">
-            {data.items.map((p) => (
-              <li key={p.id} className="flex flex-col gap-3 px-4 py-3 hover:bg-cream/40 md:flex-row md:items-center">
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <Thumb p={p} />
-                  <div className="min-w-0">
-                    <Link
-                      href={`/products/${p.id}/edit`}
-                      className="block truncate font-semibold text-charcoal hover:text-forest"
-                    >
-                      {p.name}
-                    </Link>
-                    <p className="truncate text-xs text-ink-muted">
-                      {p.categoryName}
-                      {p.brands.length ? ` · ${p.brands.map((b) => b.name).join(", ")}` : ""}
-                      {p.unit ? ` · per ${p.unit}` : ""}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pl-[4.25rem] md:w-44 md:shrink-0 md:justify-end md:pl-0">
-                  <PriceCell p={p} />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                  <Badge tone={AVAILABILITY_TONE[p.availability]}>{AVAILABILITY_LABEL[p.availability]}</Badge>
-                  {p.isPublished ? <Badge tone="green">Published</Badge> : <Badge tone="gold">Draft</Badge>}
-                  <Button variant="outline" size="sm" onClick={() => setToggle(p)}>
-                    {p.isPublished ? "Unpublish" : "Publish"}
-                    <span className="sr-only"> {p.name}</span>
-                  </Button>
-                  <ButtonLink
-                    href={`/products/${p.id}/edit`}
-                    variant="outline"
-                    size="sm"
-                    icon={<Pencil aria-hidden="true" className="size-3.5" />}
-                  >
-                    Edit<span className="sr-only"> {p.name}</span>
-                  </ButtonLink>
-                </div>
-              </li>
-            ))}
-          </ul>
+          // One table for every row: fixed column widths on desktop, so prices, availability and status
+          // badges and actions form straight columns whatever the amount, label or action set. Below
+          // 1280 px the shared responsive table turns each row into a card (labels from the headers).
+          <TableWrap>
+            <table className="rtable product-rtable w-full table-fixed text-left" data-product-table>
+              <colgroup>
+                <col />
+                <col className="w-[9.5rem]" />
+                <col className="w-[8.25rem]" />
+                <col className="w-[7rem]" />
+                <col className="w-[17rem]" />
+              </colgroup>
+              <thead className="border-b border-line/70">
+                <tr>
+                  <th scope="col" className={th}>
+                    Product
+                  </th>
+                  <th scope="col" className={th}>
+                    Price
+                  </th>
+                  <th scope="col" className={th}>
+                    Availability
+                  </th>
+                  <th scope="col" className={th}>
+                    Status
+                  </th>
+                  <th scope="col" className={`${th} text-right`}>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/60">
+                {data.items.map((p) => (
+                  <tr key={p.id} data-product-row className="hover:bg-cream/40">
+                    <td className={`${td} rtable-main`}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Thumb p={p} />
+                        <div className="min-w-0">
+                          <Link
+                            href={`/products/${p.id}/edit`}
+                            className="line-clamp-2 font-semibold break-words text-charcoal hover:text-forest"
+                          >
+                            {p.name}
+                          </Link>
+                          <p className="truncate text-xs text-ink-muted">
+                            {p.categoryName}
+                            {p.brands.length ? ` · ${p.brands.map((b) => b.name).join(", ")}` : ""}
+                            {p.unit ? ` · per ${p.unit}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className={td} data-cell="price">
+                      <PriceCell p={p} />
+                    </td>
+                    <td className={td} data-cell="availability">
+                      <Badge tone={AVAILABILITY_TONE[p.availability]}>{AVAILABILITY_LABEL[p.availability]}</Badge>
+                    </td>
+                    <td className={td} data-cell="status">
+                      {p.isPublished ? <Badge tone="green">Published</Badge> : <Badge tone="gold">Draft</Badge>}
+                    </td>
+                    <td className={`${td} rtable-actions text-right`}>
+                      <div className="row-actions">
+                        <Button variant="outline" size="sm" onClick={() => setToggle(p)}>
+                          {p.isPublished ? "Unpublish" : "Publish"}
+                          <span className="sr-only"> {p.name}</span>
+                        </Button>
+                        <ButtonLink
+                          href={`/products/${p.id}/edit`}
+                          variant="outline"
+                          size="sm"
+                          icon={<Pencil aria-hidden="true" className="size-3.5" />}
+                        >
+                          Edit<span className="sr-only"> {p.name}</span>
+                        </ButtonLink>
+                        {p.isPublished ? <ViewOnWebsite path={websitePaths.product(p.slug)} name={p.name} /> : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
         ) : null}
         {data ? <Pagination page={data.page} limit={data.limit} total={data.total} onPage={setPage} /> : null}
       </Card>

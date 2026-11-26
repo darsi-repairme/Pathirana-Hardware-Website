@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ImagePlus, Trash2, Upload } from "lucide-react";
-import { Alert, Button, ConfirmDialog, Dialog, Field, Input } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, Dialog, Field, Input, AuthImage } from "@/components/ui";
 
 const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
 /** Mirrors the API's MAX_UPLOAD_MB (5 MB); the API enforces it as well. */
@@ -162,8 +162,7 @@ export function MediaUploadDialog({
             <p className="mb-1.5 text-sm font-semibold text-charcoal">Current</p>
             <div className="flex min-h-28 items-center justify-center rounded-xl border border-line/70 bg-cream/60 p-3">
               {current ? (
-                // eslint-disable-next-line @next/next/no-img-element -- authenticated same-origin image via the admin gateway
-                <img src={current.src} alt={current.alt} className="max-h-32 w-auto max-w-full object-contain" />
+                <AuthImage src={current.src} alt={current.alt} className="max-h-32 w-auto max-w-full object-contain" />
               ) : (
                 <p className="text-center text-sm text-ink-muted">{currentNote}</p>
               )}

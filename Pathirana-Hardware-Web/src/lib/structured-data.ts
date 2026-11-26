@@ -13,8 +13,8 @@ export function buildLocalBusinessJsonLd(siteUrl: URL | null = getSiteUrl()) {
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "HardwareStore",
-    name: business.legalName,
-    alternateName: business.shortName,
+    name: business.shortName,
+    legalName: business.legalName,
     slogan: business.tagline,
     description: business.description,
     telephone: business.phone.e164,

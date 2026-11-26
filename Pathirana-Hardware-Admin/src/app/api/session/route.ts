@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { backendFetch, clientIp } from "@/lib/server/backend";
+import { backendFetch } from "@/lib/server/backend";
+import { DEVICE_COOKIE, rememberDevice, requestClient } from "@/lib/server/client-identity";
 import { config, CSRF_HEADER, SESSION_COOKIE } from "@/lib/server/config";
 import { sameOrigin } from "@/lib/server/csrf";
 
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
-      ip: clientIp(req.headers),
+      client: requestClient(req.headers, req.cookies.get(DEVICE_COOKIE)?.value),
     });
   } catch {
     return NextResponse.json({ message: "The server is unavailable. Please try again shortly." }, { status: 503 });
@@ -40,6 +41,10 @@ export async function POST(req: NextRequest) {
   }
   if (res.status === 400) {
     return NextResponse.json({ message: "Enter a valid email address and password." }, { status: 400 });
+  }
+  // API/database failure: still no sign-in, but say so instead of "incorrect password".
+  if (res.status >= 500) {
+    return NextResponse.json({ message: "The server is unavailable. Please try again shortly." }, { status: 503 });
   }
   if (!res.ok) {
     // Same message for wrong password, unknown email or a locked account (the API does not reveal which).
@@ -57,23 +62,49 @@ export async function POST(req: NextRequest) {
     path: "/",
     maxAge: config.sessionMaxAge,
   });
+  // Remember this device: its future sign-in attempts get their own budget (see client-identity.ts).
+  rememberDevice(out, req.cookies.get(DEVICE_COOKIE)?.value);
   out.headers.set("Cache-Control", "no-store");
   return out;
 }
 
+/**
+ * Sign out. The API revokes EVERY token of this staff member (all devices). Its answer is checked:
+ * - 204: revoked everywhere → 204.
+ * - 401/403: the token was already invalid/revoked → nothing left to revoke → 204.
+ * - 429, 5xx or unreachable: revocation NOT confirmed → 503 { revoked: false }. The cookie is still
+ *   cleared on this device (a shared shop computer must never stay signed in), and the page tells
+ *   the person that other devices could not be signed out, so they can try again.
+ */
 export async function DELETE(req: NextRequest) {
   if (!sameOrigin(req) || req.headers.get(CSRF_HEADER) !== "1") {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
   const token = req.cookies.get(SESSION_COOKIE)?.value;
+  let revoked = true;
   if (token) {
     try {
-      await backendFetch("/api/v1/auth/logout", { method: "POST", token });
+      const res = await backendFetch("/api/v1/auth/logout", {
+        method: "POST",
+        token,
+        client: requestClient(req.headers, req.cookies.get(DEVICE_COOKIE)?.value),
+      });
+      revoked = res.ok || res.status === 401 || res.status === 403;
     } catch {
-      // The cookie is cleared below regardless.
+      revoked = false;
     }
   }
-  const out = new NextResponse(null, { status: 204 });
+  const out = revoked
+    ? new NextResponse(null, { status: 204 })
+    : NextResponse.json(
+        {
+          revoked: false,
+          message:
+            "You are signed out on this device, but the server could not confirm signing you out on your other devices. Sign in and sign out again when the connection is back.",
+        },
+        { status: 503 },
+      );
+  out.headers.set("Cache-Control", "no-store");
   out.cookies.set(SESSION_COOKIE, "", {
     httpOnly: true,
     sameSite: "strict",

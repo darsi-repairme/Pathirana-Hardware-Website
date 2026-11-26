@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { tx } from "@/i18n/tx";
 import { Breadcrumbs, type Crumb } from "./Breadcrumbs";
 import { Container } from "./Container";
 
@@ -67,13 +68,13 @@ export function ImageHero({
             id={id}
             className="font-display text-[clamp(2.05rem,7.4vw,3rem)] leading-[1.08] font-semibold tracking-[-0.01em] lg:text-[clamp(2.4rem,3.4vw,3.6rem)]"
           >
-            {title}
+            {tx(title)}
           </h1>
           <span
             aria-hidden="true"
             className="mt-5 block h-0.5 w-20 rounded-full bg-gradient-to-r from-brass to-gold-soft"
           />
-          <div className="mt-5 max-w-lg text-[clamp(1rem,2.4vw,1.15rem)] leading-relaxed text-sage">{intro}</div>
+          <div className="mt-5 max-w-lg text-[clamp(1rem,2.4vw,1.15rem)] leading-relaxed text-sage">{tx(intro)}</div>
           {children ? <div className="mt-7">{children}</div> : null}
         </div>
       </Container>
@@ -128,7 +129,7 @@ export function ImageHero({
         />
         {note ? (
           <span className="absolute top-3 right-3 z-10 rounded-full bg-forest-900/80 px-2.5 py-1 text-xs font-medium text-cream/90 sm:right-5 lg:top-5">
-            {note}
+            {tx(note)}
           </span>
         ) : null}
       </div>

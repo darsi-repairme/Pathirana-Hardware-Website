@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCategories } from "@/lib/live-taxonomy";
 import { CategoryVisual, CategoryIcon } from "@/components/products/CategoryVisual";
 import { TaxonomyNotice } from "@/components/products/TaxonomyStates";
+import { useCategoryText } from "@/i18n/I18nProvider";
 
 const delays = ["d2", "d3", "d4", "d5", "d6"];
 
@@ -13,6 +14,7 @@ const delays = ["d2", "d3", "d4", "d5", "d6"];
  */
 export function HomeCategoryCards() {
   const { items, status, retry } = useCategories();
+  const text = useCategoryText();
   if (status === "empty" || status === "error") {
     return (
       <div data-taxonomy-status={status} className="mt-10">
@@ -54,9 +56,9 @@ export function HomeCategoryCards() {
               <div className="flex-1 border-l-2 border-brass px-4 py-3 min-[520px]:border-t-2 min-[520px]:border-l-0 min-[520px]:px-5 min-[520px]:py-4">
                 <h3 className="flex items-center gap-3 text-base font-semibold text-white">
                   <CategoryIcon slug={c.slug} strokeWidth={1.6} className="size-5 shrink-0 text-gold-soft" />
-                  <span className="link-underline">{c.title}</span>
+                  <span className="link-underline min-w-0">{text(c).title}</span>
                 </h3>
-                {c.summary ? <p className="mt-1.5 text-sm leading-relaxed text-sage">{c.summary}</p> : null}
+                {c.summary ? <p className="mt-1.5 text-sm leading-relaxed text-sage">{text(c).summary}</p> : null}
               </div>
             </Link>
           </li>

@@ -1,5 +1,6 @@
 import { test as base } from "@playwright/test";
 import { brandLogos, productCategories } from "../../src/content/products";
+import { services } from "../../src/content/services";
 
 export * from "@playwright/test";
 
@@ -21,6 +22,22 @@ const BRAND_SLUG: Record<string, string> = {
   Würth: "wurth",
 };
 export const MOCK_BRANDS = brandLogos.map((l) => ({ slug: BRAND_SLUG[l.brand]!, name: l.brand, logo: null }));
+/** The approved services in the API's shape (what migration 0008 seeds). */
+export const MOCK_SERVICES = services.map((s, i) => ({
+  slug: s.id,
+  title: s.title,
+  shortTitle: s.shortTitle,
+  summary: s.summary,
+  description: s.description,
+  howToAsk: s.howToAsk,
+  enquireAbout: [...s.enquireAbout],
+  share: s.share,
+  icon: s.icon,
+  kind: s.kind,
+  sortOrder: i * 10,
+  translations: {},
+  image: null,
+}));
 
 /**
  * Deterministic category / brand lists for every test of an API build: the
@@ -36,8 +53,17 @@ export const test = base.extend<{ taxonomyDefaults: void }>({
       if (API) {
         await page.route(`${API}/api/v1/categories`, (r) => r.fulfill({ json: { items: MOCK_CATEGORIES } }));
         await page.route(`${API}/api/v1/brands`, (r) => r.fulfill({ json: { items: MOCK_BRANDS } }));
+        // Services: the six approved services as published API entries; gallery: no uploaded photos.
+        await page.route(`${API}/api/v1/services`, (r) => r.fulfill({ json: { items: MOCK_SERVICES } }));
+        await page.route(`${API}/api/v1/gallery`, (r) => r.fulfill({ json: { items: [] } }));
+        // Approved feedback: none yet (never depends on a real database; tests needing reviews override it).
+        await page.route(`${API}/api/v1/feedback?limit=12`, (r) => r.fulfill({ json: { items: [] } }));
       }
       await use();
+      // Release the page (and its WebGL scenes, software-rendered in headless Chromium) before
+      // Playwright closes the context: under parallel load, closing a 3D page directly could exceed
+      // the test timeout ("Tearing down context exceeded the test timeout").
+      await page.goto("about:blank").catch(() => {});
     },
     { auto: true },
   ],

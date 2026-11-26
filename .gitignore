@@ -1,0 +1,5 @@
+# Browser automation tool output (screenshots, console logs)
+.playwright-mcp/
+
+# Separate project with its own Git repository (never part of this one)
+Pathirana-Hardware-ComingSoon/

@@ -12,9 +12,9 @@ import { HomeContact } from "@/components/home/HomeContact";
 import { DeliveryAreas } from "@/components/home/DeliveryAreas";
 
 export const metadata: Metadata = {
-  title: { absolute: `${business.legalName} | Hardware Store in Bangadeniya, Sri Lanka` },
+  title: { absolute: `${business.shortName} | Hardware Store in Bangadeniya, Sri Lanka` },
   ...createPageMetadata({
-    description: `${business.tagline} ${business.legalName} — hardware and building supplies on Pallama Road, Bangadeniya, Sri Lanka. Call ${business.phone.display} or email us.`,
+    description: `${business.tagline} ${business.shortName} — hardware and building supplies on Pallama Road, Bangadeniya, Sri Lanka. Call ${business.phone.display} or email us.`,
     path: "/",
   }),
 };

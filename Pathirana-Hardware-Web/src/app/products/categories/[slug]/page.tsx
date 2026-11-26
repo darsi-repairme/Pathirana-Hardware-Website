@@ -2,14 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MessageSquareText, Phone } from "lucide-react";
-import { business, telHref, whatsappEnquiryHref } from "@/content/business";
+import { business, telHref } from "@/content/business";
 import { getCategory, productCategories, productTypesIn } from "@/content/products";
 import { createPageMetadata } from "@/lib/metadata";
 import { PageHero } from "@/components/ui/PageHero";
 import { Container } from "@/components/ui/Container";
 import { Button, ButtonPair } from "@/components/ui/Button";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { EnquiryCta } from "@/components/contact/EnquiryCta";
 import { CategoryIcon, CategoryVisual } from "@/components/products/CategoryVisual";
 import { BrandNameTiles, OtherCategoryPills } from "@/components/products/CategoryLinks";
@@ -17,6 +16,8 @@ import { ProductTypeCard } from "@/components/products/ProductTypeCard";
 import { LiveCategoryProducts } from "@/components/products/LiveCategoryProducts";
 import { liveCatalogueEnabled } from "@/lib/catalogue";
 import { ActiveCategoryGate } from "@/components/products/TaxonomyStates";
+import { WhatsAppSubjectButton } from "@/components/contact/WhatsAppSubjectButton";
+import { T } from "@/i18n/I18nProvider";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -51,7 +52,11 @@ export default async function CategoryPage({ params }: Props) {
         parents={[{ label: "Products", href: "/products/" }]}
         eyebrow="Product category"
         title={category.title}
-        intro={<p>{category.intro}</p>}
+        intro={
+          <p>
+            <T>{category.intro}</T>
+          </p>
+        }
         media={
           <figure className="relative mx-auto w-full max-w-xl lg:max-w-none">
             <div className="relative aspect-[4/3] overflow-hidden rounded-[1.75rem] bg-forest-900 shadow-[var(--shadow-lift)] ring-1 ring-white/15">
@@ -66,23 +71,15 @@ export default async function CategoryPage({ params }: Props) {
             </div>
             {category.image ? (
               <figcaption className="absolute bottom-3 left-3 rounded-full bg-forest-900/85 px-3 py-1 text-xs font-medium text-cream/90">
-                Illustration
+                <T>Illustration</T>
               </figcaption>
             ) : null}
           </figure>
         }
       >
-        <Button
-          href={whatsappEnquiryHref(category.title)}
-          external
-          variant="gold"
-          icon={<WhatsAppIcon />}
-          className="!bg-[#177a42] !text-white hover:!bg-[#11653a]"
-        >
-          Enquire on WhatsApp
-        </Button>
+        <WhatsAppSubjectButton subject={category.title} variant="gold" />
         <Button href={telHref} variant="outlineLight" icon={<Phone />}>
-          Call {business.phone.display}
+          <T vars={{ phone: business.phone.display }}>{"Call {phone}"}</T>
         </Button>
       </PageHero>
 
@@ -92,13 +89,17 @@ export default async function CategoryPage({ params }: Props) {
             <SectionHeading
               id="category-products"
               className="max-w-2xl"
-              eyebrow={`In ${category.title}`}
+              eyebrow={<T vars={{ name: category.title }}>{"In {name}"}</T>}
               title={products.length > 0 ? "Products in this category" : "Ask about this category"}
               intro={
                 products.length > 0 ? (
-                  <p>Select a product for details, or send us an enquiry about the items you need.</p>
+                  <p>
+                    <T>Select a product for details, or send us an enquiry about the items you need.</T>
+                  </p>
                 ) : (
-                  <p>Individual products in this category are not listed online yet.</p>
+                  <p>
+                    <T>Individual products in this category are not listed online yet.</T>
+                  </p>
                 )
               }
             />
@@ -106,7 +107,7 @@ export default async function CategoryPage({ params }: Props) {
               href="/products/"
               className="inline-flex min-h-11 items-center gap-2 font-semibold text-forest hover:text-brass-ink"
             >
-              <ArrowLeft aria-hidden="true" className="size-4" /> Back to Products
+              <ArrowLeft aria-hidden="true" className="size-4" /> <T>Back to Products</T>
             </Link>
           </div>
 
@@ -127,33 +128,30 @@ export default async function CategoryPage({ params }: Props) {
                   <CategoryIcon slug={category.id} strokeWidth={1.6} className="size-6" />
                 </span>
                 <h3 className="mt-6 font-display text-3xl font-medium text-charcoal">
-                  Tell us what you are looking for
+                  <T>Tell us what you are looking for</T>
                 </h3>
                 <p className="mt-3 max-w-xl text-lg leading-relaxed text-ink-muted">
-                  Send the brand, item and quantity you need, and the store will confirm what is available and the
-                  current price.
+                  <T>
+                    Send the brand, item and quantity you need, and the store will confirm what is available and the
+                    current price.
+                  </T>
                 </p>
                 <ButtonPair className="mt-7">
-                  <Button
-                    href={whatsappEnquiryHref(category.title)}
-                    external
-                    icon={<WhatsAppIcon />}
-                    className="!bg-[#177a42] hover:!bg-[#11653a]"
-                  >
-                    Enquire on WhatsApp
-                  </Button>
+                  <WhatsAppSubjectButton subject={category.title} className="!bg-[#177a42] hover:!bg-[#11653a]" />
                   <Button href={telHref} variant="outline" icon={<Phone />}>
-                    Call {business.phone.display}
+                    <T vars={{ phone: business.phone.display }}>{"Call {phone}"}</T>
                   </Button>
                 </ButtonPair>
               </div>
               {isBranded ? (
                 <div className="lg:col-span-5">
                   <p className="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-brass-ink uppercase">
-                    <MessageSquareText aria-hidden="true" className="size-4" /> Brands you can ask about
+                    <MessageSquareText aria-hidden="true" className="size-4" /> <T>Brands you can ask about</T>
                   </p>
                   <BrandNameTiles className="mt-4 grid grid-cols-2 gap-3" />
-                  <p className="mt-3 text-xs text-ink-muted">Brand names do not indicate an official partnership.</p>
+                  <p className="mt-3 text-xs text-ink-muted">
+                    <T>Brand names do not indicate an official partnership.</T>
+                  </p>
                 </div>
               ) : null}
             </div>
@@ -168,7 +166,7 @@ export default async function CategoryPage({ params }: Props) {
       <section aria-labelledby="other-categories" className="bg-cream pb-16 lg:pb-24">
         <Container size="wide">
           <h2 id="other-categories" className="reveal font-display text-2xl font-medium text-charcoal sm:text-3xl">
-            Other categories
+            <T>Other categories</T>
           </h2>
           <OtherCategoryPills current={category.id} className="reveal mt-6 flex flex-wrap gap-3" />
         </Container>
@@ -176,9 +174,10 @@ export default async function CategoryPage({ params }: Props) {
 
       <EnquiryCta
         id="category-cta-title"
-        title={`Need ${category.title.toLowerCase()}?`}
+        title="Need {name}?"
+        titleVars={{ name: category.title.toLowerCase() }}
         intro="Tell us the item, size and quantity you need. The store will confirm availability and the current price."
-        whatsappHref={whatsappEnquiryHref(category.title)}
+        enquiry={{ subject: category.title }}
       />
     </ActiveCategoryGate>
   );
