@@ -9,7 +9,6 @@ import { ProductDetail, ProductDetailSkeleton } from "@/components/products/Prod
  *
  * The site is a static export, so one stable page loads any PUBLISHED product
  * from the API in the browser — staff can publish products without a rebuild.
- * The documented product-type pages (/products/<type>/) are unchanged.
  */
 export const metadata: Metadata = {
   ...createPageMetadata({

@@ -3,7 +3,6 @@
 import { useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
-import { productCategories } from "@/content/products";
 import { productsSearchHref } from "@/lib/product-search";
 import { useBrands, useCategories } from "@/lib/live-taxonomy";
 import { useDynamicText, useT } from "@/i18n/I18nProvider";
@@ -19,9 +18,6 @@ type Props = {
   /** Accessible name of the search landmark (must be unique per page). */
   label?: string;
 };
-
-/** Suggestions come only from verified data (see below). */
-const documentedSuggestions = productCategories.flatMap((c) => [c.title, ...c.searchTerms.slice(0, 4)]);
 
 /**
  * Product search. Works without JavaScript (a plain GET form to /products/);
@@ -45,16 +41,13 @@ export function HeaderSearch({
   const [used, setUsed] = useState(false);
   const categories = useCategories(used);
   const brands = useBrands(used);
-  // Without the API: the documented category terms. With it: only ACTIVE names (never deactivated ones).
-  const suggestions =
-    categories.status === "static"
-      ? Array.from(new Set(documentedSuggestions.map((s) => t(s))))
-      : Array.from(
-          new Set([
-            ...categories.items.map((c) => pick(c.title, c.translations, "name")),
-            ...brands.items.map((b) => b.name),
-          ]),
-        );
+  // Only the ACTIVE category and brand names from the live database (never deactivated ones).
+  const suggestions = Array.from(
+    new Set([
+      ...categories.items.map((c) => pick(c.title, c.translations, "name")),
+      ...brands.items.map((b) => b.name),
+    ]),
+  );
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

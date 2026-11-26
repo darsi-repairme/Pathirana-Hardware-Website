@@ -249,7 +249,7 @@ test.describe("Responsive audit (homepage)", () => {
       const img = (await banner.boundingBox())!;
       expect(img.x, "banner sits beside the copy").toBeGreaterThan(w * 0.35);
       expect(intro.x).toBeLessThan(img.x);
-      for (const path of ["/products/", "/products/plywood/", "/services/bulk-orders/"]) {
+      for (const path of ["/products/", "/products/category/?slug=plywood", "/services/bulk-orders/"]) {
         await page.goto(path);
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
         expect(overflow, `${path} overflow`).toBeLessThanOrEqual(0);

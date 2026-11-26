@@ -73,8 +73,8 @@ test("staff changes reach every public section without a rebuild", async ({ page
       await expect(
         page.locator("section[aria-labelledby='categories-title'] [data-taxonomy-notice='empty']"),
       ).toBeVisible();
-      await page.goto("/products/categories/plywood/");
-      await expect(page.locator("[data-product-state='not-found']")).toContainText("Category not available");
+      await page.goto("/products/category/?slug=plywood");
+      await expect(page.locator("[data-product-state='not-found']")).toContainText("Category not found");
     });
   }
 

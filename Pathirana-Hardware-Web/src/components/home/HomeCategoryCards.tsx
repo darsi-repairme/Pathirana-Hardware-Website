@@ -9,8 +9,8 @@ import { useCategoryText } from "@/i18n/I18nProvider";
 const delays = ["d2", "d3", "d4", "d5", "d6"];
 
 /**
- * Home › product category cards: the ACTIVE categories staff manage (live API,
- * no rebuild); the documented categories only in builds without the API.
+ * Home › product category cards: the ACTIVE categories staff manage (live database
+ * only, no rebuild).
  */
 export function HomeCategoryCards() {
   const { items, status, retry } = useCategories();

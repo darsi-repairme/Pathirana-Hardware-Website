@@ -230,19 +230,18 @@ test.describe("Live product catalogue", () => {
     expect(await page.evaluate(() => (window as unknown as { __cls: number }).__cls)).toBeLessThan(0.1);
   });
 
-  test("existing product-type and category URLs still work; category page lists live products", async ({ page }) => {
+  test("live category page lists the category's published products", async ({ page }) => {
     await mockApi(page, (u) =>
       u.searchParams.get("category") === "building-materials" ? page1([DISCOUNTED]) : page1([]),
     );
-    await page.goto("/products/cement/");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Cement");
-    await page.goto("/products/categories/building-materials/");
+    await page.goto("/products/category/?slug=building-materials");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Building Materials");
     const live = page.locator("[data-catalogue='category']");
     await expect(live).toHaveAttribute("data-catalogue-state", "ready");
     await expect(live.locator("[data-product='test-discounted']")).toBeVisible();
-    // A category with no published products shows no empty live section.
-    await page.goto("/products/categories/plywood/");
-    await expect(page.locator("[data-catalogue='category']")).toHaveCount(0, { timeout: 10_000 });
+    // The built-in product-type and category pages no longer exist (live database only).
+    expect((await page.request.get("/products/cement/")).status()).toBe(404);
+    expect((await page.request.get("/products/categories/building-materials/")).status()).toBe(404);
   });
 
   test("cards fit small phones without horizontal scrolling", async ({ page }) => {

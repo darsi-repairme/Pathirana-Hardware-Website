@@ -2,9 +2,6 @@ import { expect, test } from "./fixtures";
 import { trackErrors } from "./helpers";
 
 const hero = "section[aria-labelledby='hero-title']";
-/** Built with NEXT_PUBLIC_API_URL, /products/ lists the LIVE catalogue (live-catalogue.spec.ts)
- *  instead of the documented static product types these search tests check. */
-const STATIC_CATALOGUE = !process.env.NEXT_PUBLIC_API_URL;
 
 test.describe("Hero carousel", () => {
   test("three slides advance automatically every ~6 s and cycle 3 → 1", async ({ page }) => {
@@ -145,8 +142,6 @@ test.describe("Hero carousel", () => {
 });
 
 test.describe("Search", () => {
-  const productCards = (page: import("@playwright/test").Page) => page.locator("#all-products ul > li h3");
-
   test("header search lands on the matching products", async ({ page, isMobile }) => {
     await page.goto("/");
     if (isMobile) await page.getByRole("button", { name: "Search products" }).click();
@@ -154,46 +149,7 @@ test.describe("Search", () => {
     await input.fill("Plywood");
     await input.press("Enter");
     await expect(page).toHaveURL(/\/products\/\?q=plywood#all-products$/);
-    // API build: the query goes to the live catalogue (live-catalogue.spec.ts covers its results).
-    if (STATIC_CATALOGUE) await expect(productCards(page)).toHaveText(["Plywood"]);
-  });
-
-  test("search, category filter, clear and empty state use the real product data", async ({ page }) => {
-    test.skip(!STATIC_CATALOGUE, "API build: the live catalogue search is tested in live-catalogue.spec.ts");
-    await page.goto("/products/");
-    await expect(productCards(page)).toHaveCount(8);
-    const search = page.getByRole("searchbox", { name: "Search products by name" });
-    await search.fill("tor");
-    await expect(productCards(page)).toHaveText(["TOR Bars"]);
-    await search.fill("");
-    await page.getByLabel("Filter by category").selectOption("doors-windows");
-    await expect(productCards(page)).toHaveText(["Doors", "Windows"]);
-    // Filters combine: category + search.
-    await search.fill("window");
-    await expect(productCards(page)).toHaveText(["Windows"]);
-    await page.getByRole("button", { name: "Reset Filters" }).click();
-    await expect(productCards(page)).toHaveCount(8);
-    await expect(page.getByLabel("Filter by category")).toHaveValue("all");
-    await expect(search).toHaveValue("");
-    // Brands are never linked to products without documentation → honest empty state.
-    await page.getByLabel("Filter by brand").selectOption("PE+");
-    await expect(page.getByRole("heading", { name: "No matching products" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "View Branded Hardware" })).toHaveAttribute(
-      "href",
-      "/products/categories/branded-hardware/",
-    );
-    await page.getByRole("button", { name: "Reset Filters" }).click();
-    await search.fill("solar inverter");
-    await expect(page.getByRole("heading", { name: "No matching products" })).toBeVisible();
-    await expect(page.locator("#all-products a[href='tel:+94712259699']")).toBeVisible();
-    await page.getByRole("button", { name: "Show all products" }).click();
-    await expect(productCards(page)).toHaveCount(8);
-    // A brand name points to its category instead of inventing products.
-    await search.fill("Wurth");
-    await expect(page.getByRole("link", { name: "View Branded Hardware" }).first()).toHaveAttribute(
-      "href",
-      "/products/categories/branded-hardware/",
-    );
+    // The query goes to the live catalogue (live-catalogue.spec.ts covers its results).
   });
 
   test("products page: seven categories linking to their pages, no shop features", async ({ page }) => {
@@ -209,7 +165,9 @@ test.describe("Search", () => {
       "gas-cylinders",
       "branded-hardware",
     ];
-    for (let i = 0; i < 7; i++) await expect(tiles.nth(i)).toHaveAttribute("href", `/products/categories/${ids[i]}/`);
+    // Every category opens the live category page (categories come from the mocked API).
+    for (let i = 0; i < 7; i++)
+      await expect(tiles.nth(i)).toHaveAttribute("href", `/products/category/?slug=${ids[i]}`);
     // "View All Categories" expands the collection in place (4 → 7) and collapses again.
     const toggle = page.getByRole("button", { name: "View All Categories" });
     await expect(tiles.filter({ visible: true })).toHaveCount(4);
@@ -222,45 +180,19 @@ test.describe("Search", () => {
     expect(await page.locator("main").innerText()).not.toMatch(
       /\bRs\.?\s?\d|\$\d|in stock|% off|add to cart|checkout/i,
     );
-    // The client's original logo files, unmodified and undistorted.
-    for (const [brand, file] of [
-      ["PE+", "pe-plus"],
-      ["Swisstek", "swisstek"],
-      ["El Toro", "el-toro"],
-      ["Würth", "wurth"],
-    ] as const) {
-      const logo = page.locator(`section[aria-labelledby='brands-title'] img[alt='${brand} logo']`);
-      await expect(logo).toHaveAttribute("src", `/brands/${file}.png`);
-      await expect.poll(() => logo.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
-    }
-    await expect(page.locator("section[aria-labelledby='brands-title']")).toContainText(
-      "They do not indicate an official partnership.",
-    );
-    // Product cards open their detail page and offer an encoded WhatsApp enquiry (static catalogue only).
-    if (STATIC_CATALOGUE) await expectPlywoodCard(page);
+    // Brands: the live names only. No logo was uploaded (mocked API), so no logo image appears —
+    // the bundled logo files are never used.
+    const brands = page.locator("section[aria-labelledby='brands-title']");
+    for (const brand of ["PE+", "Swisstek", "El Toro", "Würth"]) await expect(brands).toContainText(brand);
+    await expect(brands.locator("img")).toHaveCount(0);
+    await expect(page.locator("img[src^='/brands/']")).toHaveCount(0);
+    await expect(brands).toContainText("They do not indicate an official partnership.");
     await page.goto("/");
     const cards = page.locator("section[aria-labelledby='products-title'] a");
     await expect(cards).toHaveCount(7);
-    await expect(cards.nth(2)).toHaveAttribute("href", "/products/categories/plywood/");
+    await expect(cards.nth(2)).toHaveAttribute("href", "/products/category/?slug=plywood");
   });
 });
-
-async function expectPlywoodCard(page: import("@playwright/test").Page) {
-  const plywood = page.locator("#all-products li", { has: page.locator("h3", { hasText: "Plywood" }) });
-  await expect(plywood.getByRole("link", { name: "Plywood", exact: true })).toHaveAttribute(
-    "href",
-    "/products/plywood/",
-  );
-  const wa = plywood.locator("a[href^='https://wa.me/94712259699?text=']");
-  await expect(wa).toHaveAttribute("target", "_blank");
-  // Shared product enquiry format (the link line appears only when NEXT_PUBLIC_SITE_URL is set).
-  const text = new URL((await wa.getAttribute("href"))!).searchParams.get("text")!;
-  expect(text).toMatch(
-    /^Hello Pathirana Hardware,\n\nI am interested in Plywood\.\nPrice shown: Contact for Price\.\nQuantity: \[enter quantity\]\.\nMy location: \[enter location\]\.\n/,
-  );
-  expect(text).not.toMatch(/localhost|127\.0\.0\.1/);
-  expect(text.endsWith("\n\nPlease confirm availability and delivery charges.")).toBe(true);
-}
 
 test.describe("Contact actions", () => {
   test("Call and WhatsApp use the confirmed number on every page", async ({ page }) => {
@@ -300,15 +232,11 @@ test.describe("Contact actions", () => {
     await expect(page.getByRole("button", { name: /testimonial/ })).toHaveCount(0);
     // Its own section, separate from the image-led gallery.
     await expect(page.locator("section[aria-labelledby='testimonials-title'] img")).toHaveCount(0);
-    // The gallery preview: 5 bundled photos on a static build; with an API, only Admin photos (the
-    // test API publishes none, so its honest empty message instead — never the bundled ones).
+    // The gallery preview shows only Admin photos (the mocked API publishes none, so its honest
+    // empty message instead — never bundled images).
     const preview = page.locator("section[aria-labelledby='gallery-preview-title']");
-    if (STATIC_CATALOGUE) {
-      await expect(preview.locator("img")).toHaveCount(5);
-    } else {
-      await expect(preview.locator("[data-home-gallery=empty]")).toBeVisible();
-      await expect(preview.locator("img")).toHaveCount(0);
-    }
+    await expect(preview.locator("[data-home-gallery=empty]")).toBeVisible();
+    await expect(preview.locator("img")).toHaveCount(0);
     await expect(page.locator("main")).not.toContainText(/★|\d(\.\d)? out of 5|stars/i);
   });
 });

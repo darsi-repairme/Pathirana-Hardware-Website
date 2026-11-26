@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useT } from "@/i18n/I18nProvider";
 import { approvedOnly, serviceHref, useServiceText, useSiteServices } from "@/lib/live-services";
 import { serviceIcons } from "./ServiceIcon";
 import { ServiceActions } from "./ServiceActions";
+import { ServicesPending } from "./ServicesPending";
 
 /**
  * /services/ › All Services — open rows split by hairlines, two equal actions each.
@@ -12,15 +12,10 @@ import { ServiceActions } from "./ServiceActions";
  * (`/services/#<slug>`) so services without a pre-built page are still reachable.
  */
 export function ServicesList() {
-  const services = approvedOnly(useSiteServices().services);
+  const live = useSiteServices();
+  const services = approvedOnly(live.services);
   const text = useServiceText();
-  const t = useT();
-  if (!services.length)
-    return (
-      <p className="mt-10 text-lg text-ink-muted">
-        {t("Please call or WhatsApp the store to ask about our services.")}
-      </p>
-    );
+  if (!services.length) return <ServicesPending status={live.status} className="mt-10 text-lg" />;
   return (
     <ol className="mt-10 grid gap-x-10 md:grid-cols-2 xl:grid-cols-3" data-services-list>
       {services.map((s, i) => {

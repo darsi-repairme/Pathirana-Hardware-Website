@@ -8,7 +8,7 @@ import { trackErrors } from "./helpers";
  * tests/live-stack (npm run test:live-stack).
  */
 const API = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
-test.skip(!API, "build without NEXT_PUBLIC_API_URL (documented lists only)");
+test.skip(!API, "the website needs NEXT_PUBLIC_API_URL (live database only)");
 
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkqP9fDwAEhgGAWw5cIQAAAABJRU5ErkJggg==",
@@ -17,7 +17,7 @@ const PNG = Buffer.from(
 const KEY = "00000000-0000-4000-8000-0000000000a1";
 
 const CATEGORIES = [
-  // A documented category (keeps its static page and artwork)…
+  // A category without an uploaded image (icon card)…
   { slug: "plywood", name: "Plywood", description: null, productCount: 0, image: null },
   // …and one staff added, with an uploaded image.
   {
@@ -35,7 +35,7 @@ const CATEGORIES = [
   },
 ];
 const BRANDS = [
-  { slug: "wurth", name: "Würth", logo: null }, // documented: the original file is kept
+  { slug: "wurth", name: "Würth", logo: null }, // no upload: name only (bundled logo files are never used)
   { slug: "test-uploaded", name: "Test Uploaded", logo: { url: `/api/v1/brand-logos/${KEY}`, width: 1, height: 1 } },
   { slug: "test-name-only", name: "Test Name Only", logo: null }, // no logo → name, never a generated logo
 ];
@@ -57,21 +57,21 @@ const brandRow = (page: Page) => page.locator("section[aria-labelledby='brands-t
 const browse = (page: Page) => page.locator("section[aria-labelledby='categories-title'] ul[data-taxonomy-status]");
 
 test.describe("Live categories and brands", () => {
-  test("active categories replace the documented list on Home, Products and About", async ({ page }) => {
+  test("only the active live categories appear on Home, Products and About", async ({ page }) => {
     const errors = trackErrors(page);
     await mockTaxonomy(page);
     await page.goto("/");
     await expect(homeCards(page)).toHaveAttribute("data-taxonomy-status", "live");
     const links = homeCards(page).getByRole("link");
     await expect(links).toHaveCount(2);
-    await expect(links.nth(0)).toHaveAttribute("href", "/products/categories/plywood/");
+    await expect(links.nth(0)).toHaveAttribute("href", "/products/category/?slug=plywood");
     await expect(links.nth(1)).toHaveAttribute("href", "/products/category/?slug=test-roofing");
     await expect(links.nth(1)).toContainText("Test roofing description.");
     await expect(links.nth(1).getByRole("img", { name: "Test roofing photo" })).toHaveAttribute(
       "src",
       `${API}/api/v1/category-images/${KEY}`,
     );
-    // Deactivated documented categories (not in the API's active list) are gone.
+    // Categories not in the API's active list never appear.
     await expect(homeCards(page)).not.toContainText("Gas Cylinders");
 
     await page.goto("/products/");
@@ -86,12 +86,13 @@ test.describe("Live categories and brands", () => {
     expect(errors).toEqual([]);
   });
 
-  test("Our Brands: uploaded logo, original logo file for a documented brand, or the name", async ({ page }) => {
+  test("Our Brands: uploaded logo, otherwise the name (no bundled logo files)", async ({ page }) => {
     await mockTaxonomy(page);
     await page.goto("/products/");
     await expect(brandRow(page)).toHaveAttribute("data-taxonomy-status", "live");
     await expect(brandRow(page).locator("li")).toHaveCount(3);
-    await expect(brandRow(page).getByRole("img", { name: "Würth logo" })).toHaveAttribute("src", "/brands/wurth.png");
+    await expect(brandRow(page).getByRole("img", { name: "Würth logo" })).toHaveCount(0);
+    await expect(brandRow(page)).toContainText("Würth");
     await expect(brandRow(page).getByRole("img", { name: "Test Uploaded logo" })).toHaveAttribute(
       "src",
       `${API}/api/v1/brand-logos/${KEY}`,
@@ -101,15 +102,6 @@ test.describe("Live categories and brands", () => {
     // Deactivated brands (not in the active list) are hidden.
     await expect(brandRow(page).getByRole("img", { name: "PE+ logo" })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
-
-    // The Branded Hardware page (category active) lists the active brand names too.
-    await mockTaxonomy(page, [
-      ...CATEGORIES,
-      { slug: "branded-hardware", name: "Branded Hardware", description: null, productCount: 0, image: null },
-    ]);
-    await page.goto("/products/categories/branded-hardware/");
-    await expect(page.locator("ul[data-taxonomy-status='live']").first()).toBeAttached();
-    await expect(page.getByText("Test Name Only", { exact: true })).toBeVisible();
   });
 
   test("no active entries → honest 'being added'; API down → 'temporarily unavailable' (never documented data)", async ({
@@ -121,8 +113,8 @@ test.describe("Live categories and brands", () => {
     const cats = page.locator("section[aria-labelledby='categories-title']");
     await expect(brands.locator("[data-taxonomy-notice='empty']")).toContainText("Brands are being added");
     await expect(cats.locator("[data-taxonomy-notice='empty']")).toContainText("Product categories are being added");
-    await expect(brands.getByRole("img")).toHaveCount(0); // no documented logos substituted
-    await expect(cats.locator("a[href^='/products/categories/']")).toHaveCount(0);
+    await expect(brands.getByRole("img")).toHaveCount(0); // nothing substituted
+    await expect(cats.locator("a[href^='/products/category/']")).toHaveCount(0);
     await page.goto("/");
     await expect(
       page.locator("section[aria-labelledby='products-title'] [data-taxonomy-notice='empty']"),
@@ -146,29 +138,12 @@ test.describe("Live categories and brands", () => {
     await expect(homeCards(page).getByRole("link")).toHaveCount(2);
   });
 
-  test("static category and product-type pages show their content only while the category is ACTIVE", async ({
-    page,
-  }) => {
-    await mockTaxonomy(page); // active: plywood, test-roofing (gas-cylinders deactivated)
-    await page.goto("/products/categories/plywood/");
-    await expect(page.locator("[data-category-gate='active'] h1")).toHaveText("Plywood");
-    await page.goto("/products/plywood/");
-    await expect(page.locator("[data-category-gate='active'] h1")).toContainText("Plywood");
-
-    await page.goto("/products/categories/gas-cylinders/");
-    await expect(page.locator("[data-product-state='not-found']")).toContainText("Category not available");
-    await expect(page.locator("[data-category-gate]")).toHaveCount(0);
-    await expect(page.locator("main")).not.toContainText("Gas cylinders are available to enquire about");
-    await page.goto("/products/gas-cylinders/");
-    await expect(page.locator("[data-product-state='not-found']")).toContainText("Product not available");
-
-    await page.unrouteAll({ behavior: "ignoreErrors" });
-    await mockTaxonomy(page, 503);
-    await page.goto("/products/categories/plywood/");
-    await expect(page.locator("[data-product-state='unavailable']")).toContainText("Temporarily unavailable");
+  test("the built-in category and product-type pages no longer exist", async ({ request }) => {
+    for (const path of ["/products/categories/plywood/", "/products/plywood/", "/products/categories/gas-cylinders/"])
+      expect((await request.get(path)).status(), path).toBe(404);
   });
 
-  test("live category page: staff-added category, unknown slug, documented slug, API down", async ({ page }) => {
+  test("live category page: any active category, unknown slug, inactive slug, API down", async ({ page }) => {
     await mockTaxonomy(page);
     await page.goto("/products/category/?slug=test-roofing");
     const live = page.locator("[data-live-category='test-roofing']");
@@ -181,8 +156,12 @@ test.describe("Live categories and brands", () => {
     await page.goto("/products/category/?slug=not-a-category");
     await expect(page.locator("[data-product-state='not-found']")).toContainText("Category not found");
 
+    // A former built-in category is just a live category now (no redirect, no bundled page).
     await page.goto("/products/category/?slug=plywood");
-    await expect(page).toHaveURL(/\/products\/categories\/plywood\/$/);
+    await expect(page.locator("[data-live-category='plywood'] h1")).toHaveText("Plywood");
+    // A category that is not active shows "not found", never bundled content.
+    await page.goto("/products/category/?slug=gas-cylinders");
+    await expect(page.locator("[data-product-state='not-found']")).toContainText("Category not found");
 
     await page.unrouteAll({ behavior: "ignoreErrors" });
     await mockTaxonomy(page, 503);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchBrands, fetchCategories, liveCatalogueEnabled, type LiveBrand, type LiveCategory } from "./catalogue";
-import { DOCUMENTED_BRANDS, DOCUMENTED_CATEGORIES, toDisplayBrand, toDisplayCategory } from "./taxonomy";
+import { toDisplayBrand, toDisplayCategory } from "./taxonomy";
 
 /** Browser hooks for the live category / brand lists (see ./taxonomy for the rules). */
 /**
@@ -28,21 +28,20 @@ const loadCategories = cached<LiveCategory[]>(() => fetchCategories());
 const loadBrands = cached<LiveBrand[]>(() => fetchBrands());
 
 /**
- * - "static": site built WITHOUT the API → the documented lists (nothing to load)
  * - "loading": request in flight → no items yet (sections show placeholders)
  * - "live": the API's ACTIVE entries (non-empty)
  * - "empty": the API answered with no active entries → honest "being added" state
- * - "error": API unreachable → honest "temporarily unavailable" state (with retry)
- * With the API, the documented lists are NEVER substituted: deactivated entries can
- * not reappear through static data.
+ * - "error": API not configured or unreachable → honest "temporarily unavailable" state (with retry)
+ * The live database is the only source: nothing bundled with the site is ever substituted.
  */
-export type LiveStatus = "static" | "loading" | "live" | "empty" | "error";
+export type LiveStatus = "loading" | "live" | "empty" | "error";
 
-function useLive<L, D>(load: () => Promise<L[]>, map: (l: L) => D, documented: readonly D[], enabled = true) {
+function useLive<L, D>(load: () => Promise<L[]>, map: (l: L) => D, enabled = true) {
   const live = liveCatalogueEnabled();
-  const [state, setState] = useState<{ items: readonly D[]; status: LiveStatus }>(() =>
-    live ? { items: [], status: "loading" } : { items: documented, status: "static" },
-  );
+  const [state, setState] = useState<{ items: readonly D[]; status: LiveStatus }>(() => ({
+    items: [],
+    status: live ? "loading" : "error",
+  }));
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!live || !enabled) return;
@@ -59,6 +58,7 @@ function useLive<L, D>(load: () => Promise<L[]>, map: (l: L) => D, documented: r
     };
   }, [live, load, map, enabled, attempt]);
   const retry = () => {
+    if (!live) return; // no API configured: nothing to retry
     setState({ items: [], status: "loading" });
     setAttempt((n) => n + 1);
   };
@@ -66,14 +66,12 @@ function useLive<L, D>(load: () => Promise<L[]>, map: (l: L) => D, documented: r
 }
 
 /** Active categories (live when available). `enabled: false` defers the request (e.g. until a search box is used). */
-export const useCategories = (enabled = true) =>
-  useLive(loadCategories, toDisplayCategory, DOCUMENTED_CATEGORIES, enabled);
+export const useCategories = (enabled = true) => useLive(loadCategories, toDisplayCategory, enabled);
 
-/** Active brands (live when available). */
-export const useBrands = (enabled = true) => useLive(loadBrands, toDisplayBrand, DOCUMENTED_BRANDS, enabled);
+/** Active brands (live database only). */
+export const useBrands = (enabled = true) => useLive(loadBrands, toDisplayBrand, enabled);
 
-/** One category by slug from the live list ("found" only while ACTIVE). Used by the live category
- *  page and to gate the static category / product-type pages. */
+/** One category by slug from the live list ("found" only while ACTIVE). Used by the live category page. */
 export function useLiveCategory(slug: string) {
   const [state, setState] = useState<{ status: "loading" | "found" | "missing" | "error"; category?: LiveCategory }>({
     status: "loading",

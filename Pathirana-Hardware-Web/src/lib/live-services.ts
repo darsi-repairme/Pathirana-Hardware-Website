@@ -7,15 +7,17 @@ import { apiGet, getApiBase } from "./api";
 
 /**
  * Services managed in the Admin (API `GET /api/v1/services`, published only, in staff order).
+ * The live database is the ONLY source of service content:
  *
- * - No API configured (static build), while loading, or when the API is unreachable: the six
- *   approved services bundled with the site — the premium layout never flashes empty, and nothing
- *   unapproved can appear (the bundle IS the approved list).
+ * - While loading: no services (sections show a loading state).
  * - API answered: exactly the published services, with the staff's text, order, translations and
  *   image. A service staff hid disappears; one they added appears.
+ * - No API configured, or the API is unreachable: no services ("error" — sections show an
+ *   honest "please call / WhatsApp" message). Nothing bundled with the site is ever shown.
  *
- * Only the six bundled slugs have pre-built detail pages and 3D scenes (static export); other
- * services link to their image card on /services/all/ instead of a 404.
+ * Only the six approved slugs have pre-built detail pages and 3D scenes (static export); the
+ * bundled list is used for those slugs' 3D scene only, never for text. Other services link to
+ * their image card on /services/all/ instead of a 404.
  */
 export type LocaleText = Partial<Record<"ta" | "si", Partial<Record<string, unknown>>>>;
 export type SiteService = Service & {
@@ -45,7 +47,7 @@ const KINDS: readonly ServiceKind[] = ["materials", "delivery", "bulk", "reserva
 const BUNDLED_IDS = new Set(BUNDLED.map((s) => s.id));
 /** The approved 3D scene of each of the six, fixed by slug (a stored `kind` can never swap it). */
 const BUNDLED_KIND = new Map(BUNDLED.map((s) => [s.id, s.kind]));
-const bundled: readonly SiteService[] = BUNDLED.map((s) => ({ ...s, hasPage: true }));
+const NONE: readonly SiteService[] = [];
 
 /** API image paths are relative to the API origin. */
 const abs = (base: string, path: string) => (/^https?:\/\//.test(path) ? path : `${base}${path}`);
@@ -91,24 +93,25 @@ function load(): Promise<SiteService[]> {
   return entry.promise;
 }
 
-export type ServicesStatus = "static" | "loading" | "live" | "error";
+export type ServicesStatus = "loading" | "live" | "error";
 
 /**
  * `defer: true` postpones the request (e.g. the footer waits until it is scrolled into view, so pages
- * make no API call on load just for the footer); the approved list is shown meanwhile.
+ * make no API call on load just for the footer); nothing is shown meanwhile.
  */
 export function useSiteServices(defer = false): { services: readonly SiteService[]; status: ServicesStatus } {
-  const enabled = getApiBase() !== null && !defer;
+  const configured = getApiBase() !== null;
+  const enabled = configured && !defer;
   const [state, setState] = useState<{ services: readonly SiteService[]; status: ServicesStatus }>(() => ({
-    services: bundled,
-    status: enabled ? "loading" : "static",
+    services: NONE,
+    status: configured ? "loading" : "error",
   }));
   useEffect(() => {
     if (!enabled) return;
     let active = true;
     load()
       .then((items) => active && setState({ services: items, status: "live" }))
-      .catch(() => active && setState({ services: bundled, status: "error" }));
+      .catch(() => active && setState({ services: NONE, status: "error" }));
     return () => {
       active = false;
     };

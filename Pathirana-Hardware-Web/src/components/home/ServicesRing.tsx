@@ -7,6 +7,7 @@ import { useRef, useState, type CSSProperties, type MouseEvent, type PointerEven
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { approvedOnly, serviceHref, useServiceText, useSiteServices } from "@/lib/live-services";
 import { serviceIcons } from "@/components/services/ServiceIcon";
+import { ServicesPending } from "@/components/services/ServicesPending";
 import { useAutoAdvance } from "@/lib/useAutoAdvance";
 import { ServiceVisual } from "./ServiceVisual";
 
@@ -34,8 +35,9 @@ const SWIPE_PX = 40;
  * and keeps turning in one direction past the sixth service.
  */
 export function ServicesRing() {
-  // Published services from the Admin (the approved six until the API answers, or without it).
-  const services = approvedOnly(useSiteServices().services);
+  // Published services from the Admin (live database only; the 3D ring shows the approved slugs).
+  const live = useSiteServices();
+  const services = approvedOnly(live.services);
   const text = useServiceText();
   const COUNT = Math.max(services.length, 1);
   /** Ring position (0…COUNT-1) of a continuous turn counter. */
@@ -91,7 +93,7 @@ export function ServicesRing() {
 
   const current = services[active];
   const t = useT();
-  if (!current) return null; // staff have hidden every service
+  if (!current) return <ServicesPending status={live.status} className="py-16 text-center text-lg" />;
 
   return (
     <div

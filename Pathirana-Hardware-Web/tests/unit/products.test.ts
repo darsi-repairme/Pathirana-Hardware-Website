@@ -2,12 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { catalogue, productCategories, productTypes } from "../../src/content/products.ts";
 import { testimonials } from "../../src/content/testimonials.ts";
-import {
-  filterProductTypes,
-  normalizeQuery,
-  productsSearchHref,
-  searchProducts,
-} from "../../src/lib/product-search.ts";
+import { normalizeQuery, productsSearchHref } from "../../src/lib/product-search.ts";
 import {
   addItem,
   enquiryMailto,
@@ -40,25 +35,6 @@ test("product categories match the client requirements (no invented catalogue)",
 
 test("no testimonials are published until real ones are supplied", () => {
   assert.equal(testimonials.length, 0);
-});
-
-test("search matches categories by title and everyday terms", () => {
-  assert.equal(searchProducts("TOR bars").categories[0]?.id, "steel-products");
-  assert.deepEqual(
-    searchProducts("  Plywood  ").categories.map((c) => c.id),
-    ["plywood"],
-  );
-  assert.equal(searchProducts("cement").categories[0]?.id, "building-materials");
-  assert.equal(searchProducts("gas cylinder").categories[0]?.id, "gas-cylinders");
-  assert.equal(searchProducts("bathroom set").categories[0]?.id, "bathroom-sanitary");
-  assert.equal(searchProducts("Wurth").categories[0]?.id, "branded-hardware");
-  assert.equal(searchProducts("windows").categories[0]?.id, "doors-windows");
-});
-
-test("search never invents results", () => {
-  assert.deepEqual(searchProducts("solar panel inverter"), { categories: [], productTypes: [], products: [] });
-  assert.deepEqual(searchProducts(""), { categories: [], productTypes: [], products: [] });
-  assert.deepEqual(searchProducts("a"), { categories: [], productTypes: [], products: [] });
 });
 
 test("search query normalisation and products URL", () => {
@@ -120,23 +96,6 @@ test("only the eight documented product types are published, each in a real cate
     ["tor-bars", "box-bars"],
   );
   assert.equal(productTypes.filter((p) => p.category === "branded-hardware").length, 0);
-});
-
-test("search and filters work on the documented product types only", () => {
-  assert.equal(searchProducts("TOR bars").productTypes[0]?.slug, "tor-bars");
-  assert.equal(searchProducts("plywood").productTypes[0]?.slug, "plywood");
-  assert.equal(filterProductTypes("", "all").length, 8);
-  assert.deepEqual(
-    filterProductTypes("", "doors-windows").map((p) => p.slug),
-    ["doors", "windows"],
-  );
-  assert.deepEqual(
-    filterProductTypes("door", "doors-windows").map((p) => p.slug),
-    ["doors"],
-  );
-  assert.deepEqual(filterProductTypes("cement", "steel-products"), []);
-  assert.deepEqual(filterProductTypes("", "branded-hardware"), []);
-  assert.deepEqual(filterProductTypes("solar panel", "all"), []);
 });
 
 // Product WhatsApp enquiries: see tests/unit/product-enquiry.test.ts.

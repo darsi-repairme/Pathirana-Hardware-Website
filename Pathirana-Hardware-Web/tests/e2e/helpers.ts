@@ -3,8 +3,8 @@ import { expect, type Page } from "@playwright/test";
 export const PAGES = [
   { path: "/", h1: /Your Trusted Partner for Building & Hardware Needs/ },
   { path: "/products/", h1: /Our Products/ },
-  { path: "/products/categories/steel-products/", h1: /Steel Products/ },
-  { path: "/products/plywood/", h1: /Plywood/ },
+  // Live category page (the category comes from the mocked API, see fixtures.ts).
+  { path: "/products/category/?slug=steel-products", h1: /Steel Products/ },
   { path: "/about/", h1: /About Us/ },
   { path: "/services/", h1: /Our Services/ },
   { path: "/services/all/", h1: /All Services/ },

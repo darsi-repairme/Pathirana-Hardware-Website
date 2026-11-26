@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
-import { Camera } from "lucide-react";
 import { business } from "@/content/business";
 import { images } from "@/lib/images";
-import { getGalleryCollections } from "@/lib/gallery-collections";
 import { createPageMetadata } from "@/lib/metadata";
 import { ImageHero } from "@/components/ui/ImageHero";
 import { Container } from "@/components/ui/Container";
-import { Button } from "@/components/ui/Button";
-import { FacebookIcon } from "@/components/ui/FacebookIcon";
 import { GalleryBrowser } from "@/components/gallery/GalleryBrowser";
 import { T, TRich } from "@/i18n/I18nProvider";
 
@@ -21,9 +17,6 @@ export const metadata: Metadata = {
 
 /** Gallery (approved reference): image hero · filters · editorial collage with lightbox. */
 export default function GalleryPage() {
-  const collections = getGalleryCollections();
-  const total = collections.reduce((n, c) => n + c.images.length, 0);
-
   return (
     <>
       <ImageHero
@@ -49,24 +42,8 @@ export default function GalleryPage() {
           <h2 id="gallery-title" className="sr-only">
             <T>Gallery</T>
           </h2>
-          {total ? (
-            <GalleryBrowser collections={collections} />
-          ) : (
-            <div role="status" className="reveal mx-auto max-w-xl py-10 text-center">
-              <Camera aria-hidden="true" className="mx-auto size-9 text-brass-ink" />
-              <h3 className="mt-4 font-display text-3xl font-medium text-charcoal">
-                <T>Photographs coming soon</T>
-              </h3>
-              <p className="mt-3 text-ink-muted">
-                <T>We only share real photographs of our own store. Follow our Facebook page for updates.</T>
-              </p>
-              <div className="mt-6">
-                <Button href={business.social.facebook} external icon={<FacebookIcon />} arrow="external">
-                  Visit our Facebook page
-                </Button>
-              </div>
-            </div>
-          )}
+          {/* Photos published in the Admin Gallery (live database only). */}
+          <GalleryBrowser />
         </Container>
       </section>
     </>

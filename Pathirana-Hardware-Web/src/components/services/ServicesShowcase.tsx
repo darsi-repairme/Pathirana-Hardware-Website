@@ -6,6 +6,7 @@ import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { approvedOnly, useServiceText, useSiteServices } from "@/lib/live-services";
 import { serviceIcons } from "@/components/services/ServiceIcon";
+import { ServicesPending } from "@/components/services/ServicesPending";
 import { ServiceVisual } from "@/components/home/ServiceVisual";
 import { useAutoAdvance } from "@/lib/useAutoAdvance";
 import { ServiceActions } from "./ServiceActions";
@@ -31,8 +32,9 @@ const SWIPE_PX = 40;
  * under prefers-reduced-motion). Phones get the same circle, scaled down.
  */
 export function ServicesShowcase() {
-  // Published services from the Admin (the approved six until the API answers, or without it).
-  const services = approvedOnly(useSiteServices().services);
+  // Published services from the Admin (live database only; the 3D showcase shows the approved slugs).
+  const live = useSiteServices();
+  const services = approvedOnly(live.services);
   const text = useServiceText();
   const COUNT = Math.max(services.length, 1);
   const wrap = (n: number) => ((n % COUNT) + COUNT) % COUNT;
@@ -92,12 +94,7 @@ export function ServicesShowcase() {
 
   const current = services[active];
   const t = useT();
-  if (!current)
-    return (
-      <p className="text-center text-lg text-ink-muted">
-        {t("Please call or WhatsApp the store to ask about our services.")}
-      </p>
-    );
+  if (!current) return <ServicesPending status={live.status} className="py-16 text-center text-lg" />;
   const CurrentIcon = serviceIcons[current.icon];
   const cur = text(current);
 

@@ -10,6 +10,8 @@ const env = {
   ...process.env,
   PH_GALLERY_FIXTURES: "1",
   PH_DIST_DIR: "out-fixtures",
+  // Test-only build: allowed without NEXT_PUBLIC_API_URL (see next.config.ts).
+  ...(process.env.NEXT_PUBLIC_API_URL ? {} : { PH_ALLOW_NO_API: "1" }),
   NEXT_TELEMETRY_DISABLED: "1",
 };
 

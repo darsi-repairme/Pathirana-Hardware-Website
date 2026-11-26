@@ -1,26 +1,5 @@
-import { expect, test } from "./fixtures";
-import { expectNoBrokenImages, trackErrors } from "./helpers";
-
-const CATEGORIES = [
-  ["building-materials", "Building Materials", ["Cement"]],
-  ["steel-products", "Steel Products", ["TOR Bars", "Box Bars"]],
-  ["plywood", "Plywood", ["Plywood"]],
-  ["doors-windows", "Doors & Windows", ["Doors", "Windows"]],
-  ["bathroom-sanitary", "Bathroom & Sanitary", ["Bathroom Sets"]],
-  ["gas-cylinders", "Gas Cylinders", ["Gas Cylinders"]],
-  ["branded-hardware", "Branded Hardware", []],
-] as const;
-
-const PRODUCTS = [
-  ["cement", "Cement", "cement"],
-  ["tor-bars", "TOR Bars", "TOR bars"],
-  ["plywood", "Plywood", "plywood"],
-  ["box-bars", "Box Bars", "box bars"],
-  ["doors", "Doors", "doors"],
-  ["windows", "Windows", "windows"],
-  ["bathroom-sets", "Bathroom Sets", "bathroom sets"],
-  ["gas-cylinders", "Gas Cylinders", "gas cylinders"],
-] as const;
+import { expect, MOCK_SERVICES, test } from "./fixtures";
+import { trackErrors } from "./helpers";
 
 const SERVICES = [
   ["building-material-supply", "Building Material Supply"],
@@ -35,64 +14,6 @@ const NO_SHOP = /Rs\.?\s?\d|\$\d|in stock|% off|add to cart|checkout|free delive
 
 test.describe("Detail pages", () => {
   test.setTimeout(180_000);
-
-  test("seven category pages: heading, breadcrumb, documented products, enquiry", async ({ page }) => {
-    const errors = trackErrors(page);
-    for (const [slug, title, products] of CATEGORIES) {
-      await page.goto(`/products/categories/${slug}/`);
-      await expect(page.locator("h1")).toHaveText(title);
-      const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
-      await expect(crumbs.getByRole("link", { name: "Products" })).toHaveAttribute("href", "/products/");
-      await expect(crumbs.locator("[aria-current=page]")).toHaveText(title);
-      const cards = page.locator("section[aria-labelledby='category-products'] li h3");
-      await expect(cards).toHaveText([...products]);
-      await expect(page.getByRole("link", { name: "Back to Products" })).toHaveAttribute("href", "/products/");
-      const wa = page.locator("main a[href^='https://wa.me/94712259699?text=']").first();
-      expect(new URL((await wa.getAttribute("href"))!).searchParams.get("text")).toBe(
-        `Hello Pathirana Hardware, I would like to enquire about ${title}.`,
-      );
-      await expect(page.locator("main")).not.toContainText(NO_SHOP);
-    }
-    // Branded Hardware: honest enquiry panel with the documented brands, no invented products.
-    await expect(page.locator("main")).toContainText("Individual products in this category are not listed online yet");
-    for (const brand of ["PE+", "Swisstek", "El Toro", "Würth"])
-      await expect(page.locator("main")).toContainText(brand);
-    expect(errors).toEqual([]);
-  });
-
-  test("eight product pages: name, category, enquiry, call and back link", async ({ page }) => {
-    const errors = trackErrors(page);
-    for (const [slug, name] of PRODUCTS) {
-      await page.goto(`/products/${slug}/`);
-      await expect(page.locator("h1")).toHaveText(name);
-      const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
-      await expect(crumbs.locator("li a")).toHaveCount(3);
-      await expect(crumbs.locator("li a").nth(1)).toHaveText("Products");
-      await expect(crumbs.locator("[aria-current=page]")).toHaveText(name);
-      await expect(page.getByRole("link", { name: /^Category:/ })).toHaveAttribute(
-        "href",
-        /^\/products\/categories\/[a-z-]+\/$/,
-      );
-      const wa = page.locator("main a[href^='https://wa.me/94712259699?text=']").first();
-      await expect(wa).toHaveAttribute("target", "_blank");
-      // Client format: product name, displayed price (product types: Contact for Price), placeholders.
-      const text = new URL((await wa.getAttribute("href"))!).searchParams.get("text")!;
-      expect(text).toMatch(new RegExp(`^Hello Pathirana Hardware,\\n\\nI am interested in ${name}\\.\\n`));
-      expect(text).toContain("\nPrice shown: Contact for Price.\n");
-      expect(text).toContain("\nQuantity: [enter quantity].\nMy location: [enter location].\n");
-      expect(text).not.toMatch(/Product reference|localhost|127\.0\.0\.1/);
-      expect(text.endsWith("\n\nPlease confirm availability and delivery charges.")).toBe(true);
-      await expect(page.locator("main a[href='tel:+94712259699']").first()).toBeVisible();
-      await expect(page.locator("main").getByRole("link", { name: "Request a Quotation" })).toHaveAttribute(
-        "href",
-        `/quotation/?product=${encodeURIComponent(name)}`,
-      );
-      await expect(page.getByRole("link", { name: "Back to Products" })).toHaveAttribute("href", "/products/");
-      await expect(page.locator("main")).not.toContainText(NO_SHOP);
-    }
-    await expectNoBrokenImages(page);
-    expect(errors).toEqual([]);
-  });
 
   test("six service pages: description, what to ask, steps, WhatsApp, call, back link", async ({ page }) => {
     const errors = trackErrors(page);
@@ -117,27 +38,56 @@ test.describe("Detail pages", () => {
     expect(errors).toEqual([]);
   });
 
-  test("no categories index and unknown slugs return 404", async ({ request }) => {
-    for (const path of ["/products/categories/", "/products/not-a-product/", "/services/not-a-service/"]) {
+  test("built-in product pages no longer exist; unknown slugs return 404", async ({ request }) => {
+    // The site shows only the live database: no pre-built category / product-type pages.
+    for (const path of [
+      "/products/categories/",
+      "/products/categories/steel-products/",
+      "/products/plywood/",
+      "/products/not-a-product/",
+      "/services/not-a-service/",
+    ]) {
       expect((await request.get(path)).status(), path).toBe(404);
     }
   });
 
-  test("click-through: products → category → product → back, with browser history", async ({ page }) => {
+  test("live category page: heading, breadcrumb and back, from the API only", async ({ page }) => {
+    const errors = trackErrors(page);
     await page.goto("/products/");
+    // Category tiles link to the live category page (categories come from the mocked API).
     await page
-      .locator("section[aria-labelledby='categories-title'] a[href='/products/categories/steel-products/']")
+      .locator("section[aria-labelledby='categories-title'] a[href='/products/category/?slug=steel-products']")
       .click();
-    await expect(page).toHaveURL(/\/products\/categories\/steel-products\/$/);
-    await page.getByRole("link", { name: "Box Bars", exact: true }).click();
-    await expect(page).toHaveURL(/\/products\/box-bars\/$/);
-    await expect(page.locator("h1")).toHaveText("Box Bars");
-    await page.goBack();
-    await expect(page).toHaveURL(/\/products\/categories\/steel-products\/$/);
-    await page.goForward();
-    await expect(page).toHaveURL(/\/products\/box-bars\/$/);
-    await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Steel Products" }).click();
+    await expect(page).toHaveURL(/\/products\/category\/\?slug=steel-products$/);
     await expect(page.locator("h1")).toHaveText("Steel Products");
+    const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
+    await expect(crumbs.getByRole("link", { name: "Products" })).toHaveAttribute("href", "/products/");
+    await expect(page.locator("main")).not.toContainText(NO_SHOP);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/products\/$/);
+    expect(errors).toEqual([]);
+  });
+
+  test("service page shows only the live service: hidden → not available; API down → unavailable", async ({ page }) => {
+    const API = process.env.NEXT_PUBLIC_API_URL!.replace(/\/+$/, "");
+    // Published list without bulk-orders: its pre-built page says "not available".
+    await page.route(`${API}/api/v1/services`, (r) =>
+      r.fulfill({
+        json: { items: MOCK_SERVICES.filter((s) => s.slug !== "bulk-orders") },
+      }),
+    );
+    await page.goto("/services/bulk-orders/");
+    await expect(page.locator("[data-service-state='hidden']")).toBeVisible();
+    await expect(page.locator("h1")).toHaveText("Service not available");
+    // The delivered HTML holds no built-in service text (it loads from the API in the browser).
+    const html = await (await page.request.get("/services/home-site-delivery/")).text();
+    expect(html).not.toContain(MOCK_SERVICES.find((s) => s.slug === "home-site-delivery")!.description);
+    // API unreachable: an honest "temporarily unavailable" state, never built-in text.
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+    await page.route(`${API}/api/v1/services`, (r) => r.abort("internetdisconnected"));
+    await page.goto("/services/home-site-delivery/");
+    await expect(page.locator("[data-service-state='unavailable']")).toBeVisible();
+    await expect(page.locator("main a[href*='wa.me']")).toHaveCount(0);
   });
 });
 
@@ -193,8 +143,7 @@ test.describe("FAQ and contact", () => {
   test("nav highlights the parent section on supporting pages", async ({ page, isMobile }) => {
     test.skip(isMobile, "desktop navigation");
     const cases = [
-      ["/products/plywood/", "Products"],
-      ["/products/categories/plywood/", "Products"],
+      ["/products/category/?slug=plywood", "Products"],
       ["/services/bulk-orders/", "Services"],
       ["/gallery/", "About Us"],
       ["/faq/", "Contact Us"],

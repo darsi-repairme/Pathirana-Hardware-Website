@@ -8,9 +8,8 @@ import { LiveCategoryPage } from "@/components/products/LiveCategoryPage";
 /**
  * Live category page: /products/category/?slug=<category-slug>.
  *
- * The site is a static export, so one stable page shows any ACTIVE category
- * staff add in the Admin dashboard (no rebuild). The seven documented
- * categories keep their static pages at /products/categories/<slug>/.
+ * The site is a static export, so one stable page shows every ACTIVE category
+ * staff manage in the Admin dashboard (live database only, no rebuild).
  */
 export const metadata: Metadata = {
   ...createPageMetadata({

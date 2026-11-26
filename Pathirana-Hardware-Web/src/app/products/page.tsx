@@ -8,9 +8,7 @@ import { BlurredTopBand } from "@/components/ui/BlurredTopBand";
 import { images } from "@/lib/images";
 import { BrandLogos } from "@/components/products/BrandLogos";
 import { CategoryShowcase } from "@/components/products/CategoryShowcase";
-import { CatalogueView, ProductCatalogue } from "@/components/products/ProductCatalogue";
 import { LiveCatalogue, LiveCatalogueView } from "@/components/products/LiveCatalogue";
-import { liveCatalogueEnabled } from "@/lib/catalogue";
 import { ProductsCta } from "@/components/products/ProductsCta";
 import { T } from "@/i18n/I18nProvider";
 import { tx } from "@/i18n/tx";
@@ -59,7 +57,7 @@ export default function ProductsPage() {
         />
       </section>
 
-      {/* 2 · Our Brands — the client's original logo files */}
+      {/* 2 · Our Brands — the active brands and the logos staff uploaded in the Admin */}
       <section aria-labelledby="brands-title" className="bg-white py-12 lg:py-16">
         <Container size="wide">
           <Heading id="brands-title">Our Brands</Heading>
@@ -90,18 +88,11 @@ export default function ProductsPage() {
           <h2 id="all-products-title" className="sr-only">
             <T>All products</T>
           </h2>
-          {liveCatalogueEnabled() ? (
-            // Built with NEXT_PUBLIC_API_URL: published products load from the API in the browser,
-            // so newly published products appear without rebuilding the site.
-            <Suspense fallback={<LiveCatalogueView urlQuery="" urlCategory="" urlBrand="" />}>
-              <LiveCatalogue />
-            </Suspense>
-          ) : (
-            /* No API configured: the documented product types; ?q= / ?category= apply in the browser. */
-            <Suspense fallback={<CatalogueView urlQuery="" urlCategory="all" />}>
-              <ProductCatalogue />
-            </Suspense>
-          )}
+          {/* Published products load from the live database in the browser, so newly published
+              products appear without rebuilding the site. */}
+          <Suspense fallback={<LiveCatalogueView urlQuery="" urlCategory="" urlBrand="" />}>
+            <LiveCatalogue />
+          </Suspense>
         </Container>
       </section>
 

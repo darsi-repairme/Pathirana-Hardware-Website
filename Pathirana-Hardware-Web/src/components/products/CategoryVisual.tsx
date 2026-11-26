@@ -1,4 +1,3 @@
-import Image from "next/image";
 import {
   BrickWall,
   Columns3,
@@ -11,7 +10,6 @@ import {
   type LucideIcon,
   type LucideProps,
 } from "lucide-react";
-import { images } from "@/lib/images";
 import type { CategoryImage } from "@/lib/taxonomy";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -30,21 +28,9 @@ export function CategoryIcon({ slug, ...props }: { slug: string } & LucideProps)
   return <Icon aria-hidden="true" {...props} />;
 }
 
-/** Crop for each bundled category photo (Home cards, category page hero). */
-const categoryCrop: Record<string, string> = {
-  "building-materials": "object-[88%_88%]",
-  "steel-products": "object-[78%_92%]",
-  plywood: "object-[45%_60%]",
-  "doors-windows": "object-[50%_55%]",
-  "bathroom-sanitary": "object-[60%_55%]",
-  "gas-cylinders": "object-[55%_55%]",
-  "branded-hardware": "object-[30%_55%]",
-};
-
 /**
- * Category picture, filling its (relative, sized) parent:
- * a staff-uploaded image → the illustrative artwork bundled for the original
- * categories → a forest-green icon card (never a mismatched photo).
+ * Category picture, filling its (relative, sized) parent: the image staff uploaded
+ * in the Admin, otherwise a forest-green icon card (no bundled artwork).
  */
 export function CategoryVisual({
   category,
@@ -57,7 +43,7 @@ export function CategoryVisual({
   large?: boolean;
 }) {
   const img = category.image;
-  if (img?.kind === "uploaded") {
+  if (img) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- served by the website API (no build-time image pipeline)
       <img
@@ -70,19 +56,6 @@ export function CategoryVisual({
         loading="lazy"
         decoding="async"
         className="absolute inset-0 size-full object-cover"
-      />
-    );
-  }
-  if (img?.kind === "bundled") {
-    const image = images[img.key];
-    return (
-      <Image
-        src={image.src}
-        alt={image.alt}
-        fill
-        quality={90}
-        sizes={sizes}
-        className={`object-cover ${categoryCrop[category.slug] ?? ""}`}
       />
     );
   }

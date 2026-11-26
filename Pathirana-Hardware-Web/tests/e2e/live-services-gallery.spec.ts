@@ -61,11 +61,15 @@ test.describe("Live services", () => {
     expect(errors).toEqual([]);
   });
 
-  test("API unavailable: the approved six stay on the page (no empty layout)", async ({ page }) => {
+  test("API unavailable: an honest message, never built-in services", async ({ page }) => {
     await page.route(`${API}/api/v1/services`, (r) => r.abort("internetdisconnected"));
     await page.goto("/services/");
-    await expect(page.locator("[data-services-list] li")).toHaveCount(6);
-    await expect(page.locator(".services-orbit-node")).toHaveCount(6);
+    await expect(page.locator("[data-services-status='unavailable']").first()).toBeVisible();
+    await expect(page.locator("[data-services-list] li")).toHaveCount(0);
+    await expect(page.locator(".services-orbit-node")).toHaveCount(0);
+    // The delivered HTML holds no built-in service text (services load from the API in the browser).
+    const html = await (await page.request.get("/services/")).text();
+    expect(html).not.toContain(MOCK_SERVICES[0]!.summary);
   });
 });
 
@@ -176,11 +180,11 @@ test.describe("See More: all services with photos", () => {
     await expect(page.locator("#bulk-orders")).toHaveCount(0);
   });
 
-  test("API unavailable: the approved six still show as cards", async ({ page }) => {
+  test("API unavailable: no service cards, an honest message instead", async ({ page }) => {
     await page.route(`${API}/api/v1/services`, (r) => r.abort("internetdisconnected"));
     await page.goto("/services/all/");
-    await expect(page.locator("[data-service-card]")).toHaveCount(6);
-    await expect(page.locator("[data-image-fallback]")).toHaveCount(6);
+    await expect(page.getByText("Please call or WhatsApp the store to ask about our services.")).toBeVisible();
+    await expect(page.locator("[data-service-card]")).toHaveCount(0);
   });
 });
 

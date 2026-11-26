@@ -45,8 +45,8 @@ export function AllServicesGrid() {
     el.scrollIntoView({ block: "start" });
   }, [status]);
 
-  // While the live list loads, show placeholders rather than the bundled six: a service the
-  // owner has hidden must never flash on screen. (If the API fails, the bundled six are shown.)
+  // While the live list loads, show placeholders: services come only from the live database, so
+  // a service the owner has hidden never flashes on screen. (If the API fails, a message is shown.)
   if (status === "loading")
     return (
       <div data-services-status="loading" aria-busy="true">

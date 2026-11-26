@@ -1,11 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { T, useDynamicText, useT } from "@/i18n/I18nProvider";
 import { toGalleryImage, useLiveGallery } from "@/lib/live-gallery";
-
-type StaticTile = { src: string; alt: string; label: string; position: string };
 
 /** Collage shapes: phones = a swipeable, staggered strip; sm–md = 6 columns; lg = 12-column editorial. */
 const SHAPES = [
@@ -45,35 +42,12 @@ function Caption({ children }: { children: React.ReactNode }) {
  * Admin Gallery (staff order) — the same source as the Gallery page, so hiding, deleting, replacing or
  * reordering a photo in the Admin changes the home page too. While loading: placeholder tiles (never
  * images that may have been hidden). No published photos, or the API is unreachable: a short note.
- * The bundled `fallback` tiles are used only by a static build with no API.
+ * No images bundled with the site are used.
  */
-export function HomeGalleryTiles({ fallback }: { fallback: readonly StaticTile[] }) {
+export function HomeGalleryTiles() {
   const live = useLiveGallery();
   const pick = useDynamicText();
   const t = useT();
-
-  if (live.status === "static")
-    return (
-      <ul className={LIST} data-home-gallery="static">
-        {fallback.map((tile, i) => (
-          <li key={tile.label} className={`rv-img ${DELAYS[i]} ${ITEM} ${SHAPES[i]}`}>
-            <Link href="/gallery/" className={LINK}>
-              <Image
-                src={tile.src}
-                alt={tile.alt}
-                fill
-                quality={85}
-                sizes="(min-width: 1024px) 40vw, (min-width: 640px) 50vw, 72vw"
-                className={`object-cover ${tile.position}`}
-              />
-              <Caption>
-                <T>{tile.label}</T>
-              </Caption>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    );
 
   if (live.status === "loading")
     return (

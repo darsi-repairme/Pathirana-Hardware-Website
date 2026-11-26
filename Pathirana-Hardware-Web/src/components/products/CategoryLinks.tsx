@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { useBrands, useCategories } from "@/lib/live-taxonomy";
+import { useCategories } from "@/lib/live-taxonomy";
 import { CategoryIcon } from "./CategoryVisual";
 import { TaxonomyNotice } from "./TaxonomyStates";
 import { useCategoryText, useT } from "@/i18n/I18nProvider";
@@ -79,30 +79,6 @@ export function OtherCategoryPills({ current, className = "" }: { current: strin
           </li>
         );
       })}
-    </ul>
-  );
-}
-
-/** Branded Hardware › brands you can ask about: names of the ACTIVE brands. */
-export function BrandNameTiles({ className = "" }: { className?: string }) {
-  const { items, status, retry } = useBrands();
-  if (status === "empty" || status === "error") {
-    return (
-      <div data-taxonomy-status={status} className="mt-4">
-        <TaxonomyNotice status={status} kind="brands" onRetry={retry} compact />
-      </div>
-    );
-  }
-  return (
-    <ul data-taxonomy-status={status} aria-busy={status === "loading" || undefined} className={className}>
-      {items.map((b) => (
-        <li
-          key={b.slug}
-          className="flex min-h-20 items-center justify-center rounded-2xl border border-line/70 bg-cream px-2 text-center font-display text-2xl font-semibold [overflow-wrap:anywhere] text-forest"
-        >
-          {b.name}
-        </li>
-      ))}
     </ul>
   );
 }

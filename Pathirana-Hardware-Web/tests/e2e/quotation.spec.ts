@@ -304,20 +304,6 @@ test.describe("Product contact actions and service areas", () => {
     await expect(page.getByLabel("Product 1")).toHaveValue("Test Priced Item");
   });
 
-  test("product-type pages offer the same three actions", async ({ page }) => {
-    await page.goto("/products/plywood/");
-    const main = page.locator("[data-category-gate='active']");
-    const wa = main.getByRole("link", { name: /Enquire on WhatsApp/ }).first();
-    expect(new URL((await wa.getAttribute("href"))!).searchParams.get("text")).toContain(
-      "\nI am interested in Plywood.\nPrice shown: Contact for Price.\n",
-    );
-    await expect(main.getByRole("link", { name: "Call Us" })).toHaveAttribute("href", "tel:+94712259699");
-    await expect(main.getByRole("link", { name: "Request a Quotation" })).toHaveAttribute(
-      "href",
-      "/quotation/?product=Plywood",
-    );
-  });
-
   test("Home lists all eight service areas; no delivery charges", async ({ page }) => {
     await mockAreas(page);
     await page.goto("/");
@@ -329,7 +315,7 @@ test.describe("Product contact actions and service areas", () => {
   });
 
   test("floating WhatsApp button on every public page", async ({ page }) => {
-    for (const path of ["/", "/products/", "/quotation/", "/contact/", "/products/categories/plywood/"]) {
+    for (const path of ["/", "/products/", "/quotation/", "/contact/", "/products/category/?slug=plywood"]) {
       await page.goto(path);
       const b = page.locator("a[data-floating-whatsapp]");
       await expect(b).toBeVisible();

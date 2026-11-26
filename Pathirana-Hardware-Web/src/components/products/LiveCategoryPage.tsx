@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { CloudOff, PackageX, Phone } from "lucide-react";
 import { business, telHref, whatsappEnquiryHref } from "@/content/business";
-import { getCategory } from "@/content/products";
-import { liveCatalogueEnabled } from "@/lib/catalogue";
 import { useLiveCategory } from "@/lib/live-taxonomy";
 import { toDisplayCategory } from "@/lib/taxonomy";
 import { PageHero } from "@/components/ui/PageHero";
@@ -19,31 +17,23 @@ import { Message, ProductDetailSkeleton } from "./ProductDetail";
 import { useDynamicText, useLocale } from "@/i18n/I18nProvider";
 
 /**
- * Live category page: /products/category/?slug=<category-slug>.
- * For categories staff add in the Admin dashboard (the original seven keep
- * their static pages, and their slugs redirect there). Shows only ACTIVE
- * categories; anything else is an honest "not found".
+ * Live category page: /products/category/?slug=<category-slug> — the page for EVERY category
+ * staff manage in the Admin dashboard (live database only). Shows only ACTIVE categories;
+ * anything else is an honest "not found".
  */
 export function LiveCategoryPage() {
   const slug = useSearchParams().get("slug") ?? "";
-  const router = useRouter();
-  const documented = !!getCategory(slug);
   const { status, category, retry } = useLiveCategory(slug);
-  const enabled = liveCatalogueEnabled();
   const { t, locale } = useLocale();
   const pick = useDynamicText();
   const name = category ? pick(category.name, category.translations, "name") : "";
   const description = category ? pick(category.description, category.translations, "description") : null;
 
   useEffect(() => {
-    if (documented) router.replace(`/products/categories/${slug}/`);
-  }, [documented, router, slug]);
-  useEffect(() => {
     if (category) document.title = `${name} — ${t("Products")} | ${business.shortName}`;
   }, [category, name, t]);
 
-  if (documented) return <ProductDetailSkeleton />;
-  if (!slug || !enabled || status === "missing") {
+  if (!slug || status === "missing") {
     return (
       <Message
         state="not-found"

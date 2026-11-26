@@ -1,25 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import { useBrands } from "@/lib/live-taxonomy";
 import { TaxonomyNotice } from "./TaxonomyStates";
 import { useT } from "@/i18n/I18nProvider";
 
 /**
- * Our Brands. With the live API: the ACTIVE brands staff manage in the Admin
- * dashboard (no rebuild). Each brand shows, in order: the logo staff uploaded
- * (stored losslessly by the API), the ORIGINAL logo file supplied by the
- * client for that brand (public/brands/), or simply its name — a logo is never
- * generated. Logos are object-contain: never stretched, recoloured or cropped.
+ * Our Brands: the ACTIVE brands staff manage in the Admin dashboard (live database only,
+ * no rebuild). Each brand shows the logo staff uploaded (stored losslessly by the API), or
+ * simply a monogram and its name — no bundled logo files, and a logo is never generated.
+ * Logos are object-contain: never stretched, recoloured or cropped.
  * Cards in a centred grid (one brand → one centred card; many → as many per row as fit).
  */
-const bundledHeight: Record<string, string> = {
-  "pe-plus": "h-12 sm:h-16",
-  swisstek: "h-11 sm:h-[3.75rem]",
-  "el-toro": "h-16 sm:h-20",
-  // The original file has wide white padding around a small wordmark.
-  wurth: "h-24 sm:h-28",
-};
 
 export function BrandLogos() {
   const { items, status, retry } = useBrands();
@@ -60,7 +51,7 @@ export function BrandLogos() {
               className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-forest via-brass to-gold-soft"
             />
             <div className="flex h-20 w-full items-center justify-center sm:h-24">
-              {b.logo?.uploaded ? (
+              {b.logo ? (
                 // eslint-disable-next-line @next/next/no-img-element -- served by the website API (Supabase Storage via the API)
                 <img
                   src={b.logo.src}
@@ -70,15 +61,6 @@ export function BrandLogos() {
                   loading="lazy"
                   decoding="async"
                   className="max-h-full w-auto max-w-full object-contain"
-                />
-              ) : b.logo ? (
-                <Image
-                  src={b.logo.src}
-                  alt={t("{name} logo", { name: b.name })}
-                  width={b.logo.width}
-                  height={b.logo.height}
-                  unoptimized
-                  className={`w-auto max-w-full object-contain ${bundledHeight[b.slug] ?? "h-14 sm:h-16"} max-h-full`}
                 />
               ) : (
                 // No logo uploaded yet: a neat monogram (never a generated logo).

@@ -12,8 +12,7 @@ import { useCategoryText, useT } from "@/i18n/I18nProvider";
 
 /**
  * Products page › Browse by Category — compact, image-led tiles for the ACTIVE
- * categories (live from the website API when available; the seven documented
- * categories otherwise). Each tile opens its category page.
+ * categories (live database only). Each tile opens its category page.
  *
  * "View All Categories" (top-right of the heading row on desktop, under the
  * heading on smaller screens) expands the collection in place — there is no

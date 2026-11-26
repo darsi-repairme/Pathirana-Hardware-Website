@@ -1,6 +1,5 @@
 import { ArrowRight, MapPin, Phone } from "lucide-react";
 import { business, mapsHref, telHref } from "@/content/business";
-import { images } from "@/lib/images";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { InView } from "@/components/ui/InView";
@@ -9,18 +8,6 @@ import { ConstructionSkyline } from "./ConstructionSkyline";
 import { Testimonials } from "./Testimonials";
 import { HomeGalleryTiles } from "./HomeGalleryTiles";
 import { T } from "@/i18n/I18nProvider";
-
-/**
- * Bundled tiles, used ONLY by a static build without the API. With the API, the home collage shows
- * the Admin Gallery's first five published photos (HomeGalleryTiles).
- */
-const fallbackTiles = [
-  { ...images.aisleTools, label: "Tools & paint aisle", position: "object-[30%_50%]" },
-  { ...images.aisleMaterials, label: "Pipes, boards & blocks", position: "object-center" },
-  { ...images.plumbing, label: "Plumbing fittings", position: "object-center" },
-  { ...images.toolsPaint, label: "Paint & power tools", position: "object-center" },
-  { ...images.shopFront, label: "Our shop front", position: "object-[50%_40%]" },
-].map(({ src, alt, label, position }) => ({ src, alt, label, position }));
 
 /**
  * Home: Gallery (image-led collage) and, separately, What Our Customers Say
@@ -53,7 +40,8 @@ export function GalleryFeedback() {
             </div>
 
             {/* Phones: swipe sideways (snap); larger screens: collage — from the Admin Gallery. */}
-            <HomeGalleryTiles fallback={fallbackTiles} />
+            {/* The Admin Gallery's first five published photos (live database only). */}
+            <HomeGalleryTiles />
           </InView>
         </Container>
       </section>

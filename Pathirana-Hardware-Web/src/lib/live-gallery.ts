@@ -38,7 +38,8 @@ export function toGalleryImage(p: LivePhoto, base: string, text: { alt: string; 
   };
 }
 
-export type LiveGalleryStatus = "static" | "loading" | "live" | "error";
+/** "error": API not configured or unreachable (the Admin Gallery is the only source of photos). */
+export type LiveGalleryStatus = "loading" | "live" | "error";
 
 export function useLiveGallery(): {
   photos: LivePhoto[];
@@ -51,7 +52,7 @@ export function useLiveGallery(): {
   const [nonce, setNonce] = useState(0);
   const [state, setState] = useState<{ photos: LivePhoto[]; status: LiveGalleryStatus }>(() => ({
     photos: [],
-    status: base ? "loading" : "static",
+    status: base ? "loading" : "error",
   }));
   useEffect(() => {
     if (!base) return;
@@ -64,8 +65,9 @@ export function useLiveGallery(): {
     };
   }, [base, nonce]);
   const retry = useCallback(() => {
+    if (!base) return; // no API configured: nothing to retry
     setState((s) => ({ ...s, status: "loading" }));
     setNonce((n) => n + 1);
-  }, []);
+  }, [base]);
   return { ...state, base: base ?? "", retry };
 }
