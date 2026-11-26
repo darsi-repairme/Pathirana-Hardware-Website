@@ -3,3 +3,7 @@
 
 # Separate project with its own Git repository (never part of this one)
 Pathirana-Hardware-ComingSoon/
+
+# npm cache and logs (local only)
+.npm-cache/
+npm-debug.log*
